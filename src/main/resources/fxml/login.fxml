@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.control.Tooltip?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:controller="com.almahwar.controller.LoginController"
+           nodeOrientation="RIGHT_TO_LEFT" styleClass="login-root">
+
+    <HBox styleClass="login-card" maxWidth="940" maxHeight="580">
+
+        <!-- ===== Brand panel (right side in RTL) ===== -->
+        <VBox styleClass="login-brand" spacing="16" prefWidth="420" minWidth="340">
+            <StackPane styleClass="login-logo">
+                <Label text="م" styleClass="login-logo-text"/>
+            </StackPane>
+            <Label fx:id="brandTitleLabel" styleClass="login-brand-title" wrapText="true"/>
+            <Label fx:id="brandSubtitleLabel" styleClass="login-brand-subtitle"/>
+            <Label text="كل ما تحتاجه لإدارة مبيعات ومخزون الأدوات الصحية وتمديداتها في مكان واحد."
+                   styleClass="login-brand-text" wrapText="true"/>
+            <FlowPane hgap="8" vgap="8">
+                <Label text="مواسير" styleClass="login-chip"/>
+                <Label text="وصلات" styleClass="login-chip"/>
+                <Label text="محابس" styleClass="login-chip"/>
+                <Label text="خلاطات" styleClass="login-chip"/>
+                <Label text="طلمبات" styleClass="login-chip"/>
+                <Label text="أدوات صحية" styleClass="login-chip"/>
+            </FlowPane>
+            <Region VBox.vgrow="ALWAYS"/>
+            <Label fx:id="versionLabel" styleClass="login-brand-footer"/>
+        </VBox>
+
+        <!-- ===== Forms (only one pane is visible at a time) ===== -->
+        <StackPane styleClass="login-form-pane" HBox.hgrow="ALWAYS">
+
+            <!-- Checking the database -->
+            <VBox fx:id="loadingPane" alignment="CENTER" spacing="14">
+                <ProgressIndicator prefWidth="42" prefHeight="42"/>
+                <Label text="جارٍ الاتصال بقاعدة البيانات..." styleClass="muted"/>
+            </VBox>
+
+            <!-- Database unreachable -->
+            <VBox fx:id="dbErrorPane" alignment="CENTER" spacing="14" visible="false" managed="false">
+                <Label text="تعذّر الاتصال بقاعدة البيانات" styleClass="login-title"/>
+                <Label fx:id="dbErrorLabel" styleClass="muted" wrapText="true" textAlignment="CENTER"/>
+                <Button text="إعادة المحاولة" styleClass="btn, btn-primary" onAction="#onRetryConnection"/>
+            </VBox>
+
+            <!-- Login -->
+            <VBox fx:id="loginPane" spacing="14" visible="false" managed="false" styleClass="login-form">
+                <VBox spacing="4">
+                    <Label text="تسجيل الدخول" styleClass="login-title"/>
+                    <Label text="أدخل بيانات حسابك للمتابعة" styleClass="login-subtitle"/>
+                </VBox>
+
+                <Label fx:id="messageLabel" styleClass="form-alert" wrapText="true" maxWidth="Infinity"
+                       visible="false" managed="false"/>
+
+                <VBox spacing="6">
+                    <Label text="اسم المستخدم" styleClass="field-label"/>
+                    <TextField fx:id="usernameField" promptText="أدخل اسم المستخدم" styleClass="login-input"/>
+                    <Label fx:id="usernameError" styleClass="field-error-text" visible="false" managed="false"/>
+                </VBox>
+
+                <VBox spacing="6">
+                    <Label text="كلمة المرور" styleClass="field-label"/>
+                    <HBox fx:id="passwordGroup" styleClass="input-group">
+                        <StackPane HBox.hgrow="ALWAYS">
+                            <PasswordField fx:id="passwordField" promptText="أدخل كلمة المرور"/>
+                            <TextField fx:id="passwordTextField" promptText="أدخل كلمة المرور"
+                                       visible="false" managed="false"/>
+                        </StackPane>
+                        <ToggleButton fx:id="togglePasswordButton" styleClass="input-addon" focusTraversable="false"
+                                      onAction="#onTogglePassword">
+                            <graphic>
+                                <SVGPath fx:id="eyeIcon" styleClass="input-addon-icon"/>
+                            </graphic>
+                            <tooltip>
+                                <Tooltip fx:id="togglePasswordTooltip" text="إظهار كلمة المرور"/>
+                            </tooltip>
+                        </ToggleButton>
+                    </HBox>
+                    <Label fx:id="passwordError" styleClass="field-error-text" visible="false" managed="false"/>
+                    <Label fx:id="capsLockLabel" text="تنبيه: زر Caps Lock مفعّل" styleClass="caps-warning"
+                           visible="false" managed="false"/>
+                </VBox>
+
+                <Button fx:id="loginButton" text="تسجيل الدخول" maxWidth="Infinity"
+                        styleClass="btn, btn-primary, btn-lg" onAction="#onLogin"/>
+            </VBox>
+
+            <!-- First run: create the administrator -->
+            <VBox fx:id="setupPane" spacing="12" visible="false" managed="false" styleClass="login-form">
+                <VBox spacing="4">
+                    <Label text="إعداد النظام لأول مرة" styleClass="login-title"/>
+                    <Label text="لا يوجد مستخدمون بعد. أنشئ حساب مدير النظام للبدء."
+                           styleClass="login-subtitle" wrapText="true"/>
+                </VBox>
+
+                <Label fx:id="setupMessageLabel" styleClass="form-alert" wrapText="true" maxWidth="Infinity"
+                       visible="false" managed="false"/>
+
+                <VBox spacing="5">
+                    <Label text="الاسم الكامل" styleClass="field-label"/>
+                    <TextField fx:id="setupFullNameField" promptText="مثال: أحمد محمد" styleClass="login-input"/>
+                </VBox>
+                <VBox spacing="5">
+                    <Label text="اسم المستخدم" styleClass="field-label"/>
+                    <TextField fx:id="setupUsernameField" promptText="حروف إنجليزية وأرقام، مثال: admin"
+                               styleClass="login-input"/>
+                </VBox>
+                <HBox spacing="12">
+                    <VBox spacing="5" HBox.hgrow="ALWAYS">
+                        <Label text="كلمة المرور" styleClass="field-label"/>
+                        <PasswordField fx:id="setupPasswordField" promptText="8 أحرف على الأقل" styleClass="login-input"/>
+                    </VBox>
+                    <VBox spacing="5" HBox.hgrow="ALWAYS">
+                        <Label text="تأكيد كلمة المرور" styleClass="field-label"/>
+                        <PasswordField fx:id="setupConfirmField" promptText="أعد كتابة كلمة المرور" styleClass="login-input"/>
+                    </VBox>
+                </HBox>
+                <Label text="يجب أن تحتوي كلمة المرور على 8 أحرف على الأقل وتجمع بين الحروف والأرقام."
+                       styleClass="muted" wrapText="true"/>
+
+                <Button fx:id="setupButton" text="إنشاء حساب المدير" maxWidth="Infinity"
+                        styleClass="btn, btn-primary, btn-lg" onAction="#onCreateAdmin"/>
+            </VBox>
+        </StackPane>
+    </HBox>
+</StackPane>

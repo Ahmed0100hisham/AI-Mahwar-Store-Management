@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.chart.AreaChart?>
+<?import javafx.scene.chart.NumberAxis?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.TilePane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
+
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.almahwar.controller.MainController"
+            nodeOrientation="RIGHT_TO_LEFT" styleClass="app-root">
+
+    <!-- ===== Header ===== -->
+    <top>
+        <HBox styleClass="app-header" alignment="CENTER_LEFT" spacing="14">
+            <StackPane styleClass="brand-logo">
+                <Label text="م" styleClass="brand-logo-text"/>
+            </StackPane>
+            <VBox alignment="CENTER_LEFT" spacing="2">
+                <Label fx:id="appTitleLabel" styleClass="app-title"/>
+                <Label fx:id="appSubtitleLabel" styleClass="app-subtitle"/>
+            </VBox>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="dateLabel" styleClass="header-date"/>
+            <Separator orientation="VERTICAL" styleClass="header-separator"/>
+            <!-- Logged-in user -->
+            <HBox alignment="CENTER_LEFT" spacing="10" styleClass="user-chip">
+                <StackPane styleClass="user-avatar">
+                    <Label fx:id="userInitialLabel" styleClass="user-avatar-text"/>
+                </StackPane>
+                <VBox alignment="CENTER_LEFT" spacing="1">
+                    <Label fx:id="userNameLabel" styleClass="user-name"/>
+                    <Label fx:id="userRoleLabel" styleClass="user-role"/>
+                </VBox>
+            </HBox>
+            <Button text="تسجيل الخروج" styleClass="btn, btn-logout" onAction="#onLogout"/>
+        </HBox>
+    </top>
+
+    <!-- ===== Side navigation (appears on the right in RTL) ===== -->
+    <left>
+        <!-- Filled by MainController with the entries the user's role may access -->
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="sidebar-scroll">
+            <VBox fx:id="navContainer" styleClass="sidebar" spacing="2"/>
+        </ScrollPane>
+    </left>
+
+    <!-- ===== Content ===== -->
+    <center>
+        <ScrollPane fitToWidth="true" styleClass="content-scroll">
+            <VBox styleClass="page-content" spacing="20">
+                <HBox alignment="CENTER_LEFT" spacing="12">
+                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                        <Label fx:id="welcomeLabel" styleClass="page-title"/>
+                        <Label fx:id="dashboardTitleLabel" styleClass="page-subtitle" wrapText="true"/>
+                    </VBox>
+                    <Label fx:id="lastUpdatedLabel" styleClass="muted"/>
+                    <Button fx:id="refreshButton" text="تحديث" styleClass="btn, btn-secondary" onAction="#onRefresh"/>
+                </HBox>
+
+                <!-- KPI cards: chosen by DashboardService according to the user's permissions -->
+                <Label fx:id="kpiStatusLabel" styleClass="muted" visible="false" managed="false"/>
+                <TilePane fx:id="kpiGrid" hgap="16" vgap="16" prefColumns="3" styleClass="kpi-grid"/>
+
+                <!-- Sections (chart, lists) are placed here by MainController per permissions -->
+                <GridPane fx:id="sectionsGrid" hgap="16" vgap="16">
+                    <columnConstraints>
+                        <ColumnConstraints percentWidth="58"/>
+                        <ColumnConstraints percentWidth="42"/>
+                    </columnConstraints>
+                </GridPane>
+
+                <!-- Database status -->
+                <HBox styleClass="card, status-card" alignment="CENTER_LEFT" spacing="12">
+                    <Circle fx:id="dbStatusDot" radius="6" styleClass="status-dot, status-pending"/>
+                    <VBox spacing="2" HBox.hgrow="ALWAYS">
+                        <Label fx:id="dbStatusLabel" styleClass="status-title"/>
+                        <Label fx:id="dbStatusDetailLabel" styleClass="muted" wrapText="true"/>
+                    </VBox>
+                    <Button fx:id="retryDbButton" text="إعادة الاتصال" styleClass="btn, btn-secondary"
+                            onAction="#onRetryDatabase"/>
+                </HBox>
+            </VBox>
+        </ScrollPane>
+    </center>
+
+    <!-- ===== Status bar ===== -->
+    <bottom>
+        <HBox styleClass="status-bar" alignment="CENTER_LEFT" spacing="24">
+            <padding><Insets top="6" right="16" bottom="6" left="16"/></padding>
+            <Label fx:id="footerUserLabel"/>
+            <Label fx:id="footerDbLabel"/>
+            <Label fx:id="footerCurrencyLabel"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label fx:id="footerVersionLabel"/>
+        </HBox>
+    </bottom>
+
+    <!-- ===== Dashboard sections (not attached until MainController places them) ===== -->
+    <fx:define>
+        <!-- Sales chart -->
+        <VBox fx:id="chartCard" styleClass="card, dash-section" spacing="10">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label text="حركة المبيعات" styleClass="card-title"/>
+                    <Label fx:id="chartSummaryLabel" styleClass="muted"/>
+                </VBox>
+                <HBox fx:id="trendToggleBox" styleClass="segmented" spacing="0"/>
+            </HBox>
+            <AreaChart fx:id="salesChart" legendVisible="false" animated="false" createSymbols="true"
+                       prefHeight="290" minHeight="240" nodeOrientation="LEFT_TO_RIGHT" styleClass="sales-chart">
+                <xAxis>
+                    <NumberAxis fx:id="chartXAxis" autoRanging="false" minorTickVisible="false"
+                                tickMarkVisible="false"/>
+                </xAxis>
+                <yAxis>
+                    <NumberAxis fx:id="chartYAxis" forceZeroInRange="true" minorTickVisible="false"/>
+                </yAxis>
+            </AreaChart>
+        </VBox>
+
+        <!-- Best sellers -->
+        <VBox fx:id="topProductsCard" styleClass="card, dash-section" spacing="12">
+            <VBox spacing="2">
+                <Label text="المنتجات الأكثر مبيعًا" styleClass="card-title"/>
+                <Label text="حسب قيمة المبيعات - آخر 30 يومًا" styleClass="muted"/>
+            </VBox>
+            <VBox fx:id="topProductsBox" spacing="10"/>
+        </VBox>
+
+        <!-- Latest invoices -->
+        <VBox fx:id="recentInvoicesCard" styleClass="card, dash-section" spacing="10">
+            <Label text="آخر الفواتير" styleClass="card-title"/>
+            <TableView fx:id="invoicesTable" styleClass="dash-table" prefHeight="440" VBox.vgrow="ALWAYS"
+                       focusTraversable="false">
+                <columns>
+                    <TableColumn fx:id="invNoColumn" text="رقم الفاتورة" sortable="false"/>
+                    <TableColumn fx:id="invCustomerColumn" text="العميل" sortable="false"/>
+                    <TableColumn fx:id="invDateColumn" text="التاريخ" sortable="false"/>
+                    <TableColumn fx:id="invTotalColumn" text="الإجمالي" sortable="false"/>
+                    <TableColumn fx:id="invStatusColumn" text="الحالة" sortable="false"/>
+                </columns>
+            </TableView>
+        </VBox>
+
+        <!-- Low stock -->
+        <VBox fx:id="lowStockCard" styleClass="card, dash-section" spacing="10">
+            <HBox alignment="CENTER_LEFT" spacing="8">
+                <Label text="منتجات منخفضة المخزون" styleClass="card-title"/>
+                <Label fx:id="lowStockCountLabel" styleClass="count-badge"/>
+            </HBox>
+            <TableView fx:id="lowStockTable" styleClass="dash-table" prefHeight="440" VBox.vgrow="ALWAYS"
+                       focusTraversable="false">
+                <columns>
+                    <TableColumn fx:id="lowNameColumn" text="الصنف" sortable="false"/>
+                    <TableColumn fx:id="lowQtyColumn" text="المتوفر" sortable="false"/>
+                    <TableColumn fx:id="lowMinColumn" text="الحد الأدنى" sortable="false"/>
+                </columns>
+            </TableView>
+        </VBox>
+    </fx:define>
+</BorderPane>
