@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Al Mahwar Store Management System - REST API (for the Flutter mobile app).
+
+  An independent Maven project: it is NOT a module of the desktop pom.xml (the frozen desktop v1.0.0 builds alone,
+  unchanged). Build from this folder:  mvn clean verify
+  Architecture and security design: ../docs/API_ARCHITECTURE.md
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/>
+    </parent>
+
+    <groupId>com.almahwar</groupId>
+    <artifactId>almahwar-api</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <name>Al Mahwar Store Management API</name>
+    <description>REST API for the Al Mahwar Store Management System (mobile clients)</description>
+
+    <properties>
+        <java.version>17</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <springdoc.version>3.1.1</springdoc.version>
+        <!-- The frozen desktop release the API must stay compatible with (password hashes, permission matrix) -->
+        <desktop.version>1.0.0</desktop.version>
+    </properties>
+
+    <dependencies>
+        <!-- HTTP / JSON -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+        <!-- Bean Validation of request DTOs -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+        <!-- Spring Security + standard JWT (Nimbus JOSE) for signed, short-lived bearer tokens -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <!-- Explicit SQL (JdbcClient) + HikariCP connection pool + transactions; no JPA (same SQL semantics as desktop) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-jdbc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.sqlserver</groupId>
+            <artifactId>mssql-jdbc</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+        <!-- OpenAPI / Swagger UI: on the classpath, but disabled unless the "dev" profile is active -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>${springdoc.version}</version>
+        </dependency>
+
+        <!-- ===== tests ===== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!--
+          Compatibility tests only: the frozen desktop classes (PasswordHasher, RolePermissions) are the reference the
+          API's ports are checked against. Test scope, no transitive dependencies (no JavaFX in the API).
+          Install once from the repository root:  mvn install   (or: mvn install -DskipTests)
+        -->
+        <dependency>
+            <groupId>com.almahwar</groupId>
+            <artifactId>almahwar-store-management</artifactId>
+            <version>${desktop.version}</version>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>*</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>almahwar-api-${project.version}</finalName>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- SQL Server integration tests run only when asked: -Dalmahwar.it=true (see docs) -->
+                    <systemPropertyVariables>
+                        <almahwar.it>${almahwar.it}</almahwar.it>
+                    </systemPropertyVariables>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>default-it-off</id>
+            <activation>
+                <property>
+                    <name>!almahwar.it</name>
+                </property>
+            </activation>
+            <properties>
+                <almahwar.it>false</almahwar.it>
+            </properties>
+        </profile>
+    </profiles>
+</project>

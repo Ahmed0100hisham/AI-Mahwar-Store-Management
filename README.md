@@ -634,3 +634,10 @@ src/main/resources
   fxml/  css/  images/  application.properties
 database/      SQL scripts
 ```
+
+## REST API for mobile clients (in development)
+
+The `api/` folder holds a separate Spring Boot project — the REST API for the future mobile app. It is not part of
+the desktop build: the desktop still builds alone with `mvn package` in this folder, exactly as released (v1.0.0).
+Mobile clients only ever reach SQL Server through this API, over HTTPS. Build and test it from `api/`
+(`mvn verify`); design, configuration and security: [docs/API_ARCHITECTURE.md](docs/API_ARCHITECTURE.md).

@@ -18,6 +18,10 @@ Thumbs.db
 
 # Local configuration: may contain the database password. Copy config/application.example.properties.
 config/application.properties
+# API local configuration (database password, JWT secret). Copy api/config/application.example.properties.
+api/config/application.properties
+api/config/*.env
+*.env
 
 # Local artefacts: backup files copied off a server, report exports, jpackage output
 *.bak

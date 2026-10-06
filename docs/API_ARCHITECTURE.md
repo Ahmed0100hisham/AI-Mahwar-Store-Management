@@ -1,0 +1,359 @@
+# Al Mahwar Store Management System — REST API Architecture
+
+Status: **API Phase 1 (foundation)** · branch `api-development` · Spring Boot 4.1.1 · Java 17
+Frozen baseline: Desktop **v1.0.0** (tag `v1.0.0`, commit `c27b2e3`), database schema **1.10.0**.
+
+---
+
+## 1. Purpose
+
+The REST API is the only way mobile clients (the future Flutter app) reach the business data. It is the
+**security and business-logic boundary**: every rule the desktop enforces (authentication, lockout, permissions,
+validation, transactions, stock / ledger invariants) is enforced again here, on the server, for every request.
+
+Phase 1 delivers the foundation only — configuration, database connectivity and compatibility check, health,
+error model, validation, security (login, tokens, authorization), pagination, OpenAPI, tests — and one read-only
+proof-of-concept endpoint (`GET /api/v1/products`). It does **not** expose sales, purchases, payments or any mutation.
+
+## 2. Architecture
+
+```
+JavaFX Desktop (frozen v1.0.0) ──► Desktop Service ──► Desktop DAO ──┐
+                                                                     ├──► SQL Server (AlMahwarDB, schema 1.10.0)
+Flutter (future) ──HTTPS──► reverse proxy (TLS) ──► Spring Boot API ─┘
+                                                     │
+                                                     ├─ security filters  (JWT, per-request user state)
+                                                     ├─ controller         (HTTP ↔ DTO, Bean Validation)
+                                                     ├─ service            (@PreAuthorize, @Transactional, rules)
+                                                     └─ repository         (explicit SQL, JdbcClient)
+```
+
+**Repository layout — chosen for the lowest risk to the frozen desktop:**
+
+```
+Al Mahwar Store Management System/
+├── pom.xml, src/, config/ …   desktop v1.0.0 — unchanged, builds alone exactly as released
+├── api/                       independent Spring Boot project (own pom.xml, not a Maven module of the desktop)
+├── database/                  shared schema scripts (owned by the desktop; the API never runs them)
+└── docs/API_ARCHITECTURE.md
+```
+
+Moving the desktop into `desktop/` was rejected for now: it changes every path of a released, tagged product for a
+cosmetic gain. An aggregator pom was rejected too: it would modify the desktop `pom.xml`.
+
+**No runtime dependency on the desktop code.** The desktop services keep a single-user session
+(`SessionManager` singleton) and open connections through static `DatabaseConnection` / `TransactionManager`
+(DriverManager, no pool, configuration from the desktop's files). That is right for one desktop user, wrong for a
+concurrent server. Phase 1 therefore **ports** only small security primitives and proves them identical with
+**parity tests against the frozen desktop 1.0.0 classes** (test scope only; nothing of the desktop is in the API JAR):
+
+| Ported into the API | Checked against (desktop 1.0.0) |
+|---|---|
+| `security.PasswordHasher` | `com.almahwar.util.PasswordHasher` — hashes cross-verify both ways |
+| `security.Permission`, `security.RolePermissions` | `com.almahwar.model.Permission`, `com.almahwar.service.RolePermissions` — identical names and grants |
+| `auth.LoginAttemptTracker` | `com.almahwar.service.LoginAttemptTracker` — same behaviour |
+| `AuthUserRepository.recordFailedLogin` SQL | `com.almahwar.dao.UserDao.recordFailedLogin` — same statement |
+| `SchemaCompatibilityChecker.REQUIRED_SCHEMA_VERSION` | `SettingsService.REQUIRED_SCHEMA_VERSION` (`1.10.0`) |
+
+See §20 for how the business-heavy phases (sales, purchases, returns) should reuse the desktop rules instead of
+re-implementing them.
+
+## 3. Trust boundaries
+
+| Zone | Trusted? | Notes |
+|---|---|---|
+| Mobile device / Flutter app | **No** | Can be modified, replayed, scripted. UI checks are convenience only. |
+| Network between app and server | **No** | HTTPS only in production (§17). |
+| Reverse proxy (TLS termination) | Yes (operated by us) | The only component exposed to the Internet. |
+| Spring Boot API | Yes | Decides every authentication and authorization question. |
+| SQL Server | Yes | Reachable **only** from the API host and the desktop LAN — never from the Internet. |
+
+Everything coming from the client — body, query, headers, token claims beyond the verified identity — is validated
+or ignored. Role, permissions, active flag and must-change-password are **re-read from the database on every
+request**, never taken from the token.
+
+## 4. Why Flutter never connects directly to SQL Server
+
+* A direct connection needs SQL credentials on the phone — extractable from any installed app.
+* SQL Server would have to be exposed to the Internet (brute force, unpatched-protocol attacks, data exfiltration).
+* Business rules (atomic posting, stock never negative, credit limits, permissions, audit) would run on the client,
+  where they can be skipped; two concurrent clients could corrupt stock and ledgers.
+* The desktop's permission model would be unenforceable: SQL permissions are per table, not per business action.
+
+The API holds the only credentials, exposes only business operations, and runs every rule server-side.
+
+## 5. API package structure (`api/src/main/java/com/almahwar/api`)
+
+| Package | Content |
+|---|---|
+| `config` | `DatabaseProperties`, `ApiProperties` (validated configuration), `DataSourceConfig` (HikariCP), `OpenApiConfig` |
+| `security` | `SecurityConfig` (filter chain, CORS), `JwtConfig`, `TokenService`, `UserPrincipalLoader`, `ApiUser`, `CurrentUser`, `PasswordChangeRequiredFilter`, `SecurityErrorHandlers`, ported `PasswordHasher` / `Permission` / `RolePermissions` |
+| `auth` | `AuthController`, `AuthService` (login rules), `AuthUserRepository`, `LoginAttemptTracker`, `dto/` |
+| `audit` | `AuditLogRepository` (writes the desktop's `Audit_Log`) |
+| `product` | proof of concept: `ProductController` → `ProductQueryService` → `ProductRepository`, `ProductResponse`, `ProductSort` |
+| `health` | `HealthController`, `SchemaCompatibilityChecker`, `StartupSchemaVerifier`, `DatabaseStatusRepository` |
+| `error` | `ApiError`, `ErrorCode`, `ApiException`, `FieldValidationException`, `GlobalExceptionHandler`, `ErrorResponseWriter` |
+| `web` | `RequestIdFilter` (correlation id), `PageQuery`, `PageResponse` |
+
+Rules (enforced by `ApiArchitectureTest`): controllers contain no SQL and no JDBC / repository access; SQL is written
+only in `*Repository` classes; every route is under `/api/v1`; no JPA / Hibernate; no Flutter / Dart files.
+
+## 6. Configuration
+
+Precedence (Spring Boot): command-line › environment variables › `config/application.properties` next to the working
+directory (git-ignored) › bundled `application.properties` (safe defaults, **no credentials**).
+
+| Setting | Environment variable | Default |
+|---|---|---|
+| `almahwar.db.host` / `port` / `name` | `ALMAHWAR_DB_HOST` / `_PORT` / `_NAME` | `localhost` / `1433` / `AlMahwarDB` |
+| `almahwar.db.user` / `password` | `ALMAHWAR_DB_USER` / `ALMAHWAR_DB_PASSWORD` | **required**, no default |
+| `almahwar.db.encrypt` / `trust-server-certificate` | `ALMAHWAR_DB_ENCRYPT` / `ALMAHWAR_DB_TRUST_SERVER_CERTIFICATE` | `true` / `false` |
+| `almahwar.api.jwt.secret` | `ALMAHWAR_API_JWT_SECRET` | **required**: base64 of ≥ 32 random bytes |
+| `almahwar.api.jwt.access-token-ttl` | `ALMAHWAR_API_JWT_ACCESS_TOKEN_TTL` | `15m` (max 1 h) |
+| `almahwar.api.login.max-attempts` / `lock-seconds` | … | `5` / `300` — **must equal the desktop's** `security.login.*` |
+| `almahwar.api.cors.allowed-origins` | `ALMAHWAR_API_CORS_ALLOWED_ORIGINS` | empty (no browser origin) |
+| `server.port` | `ALMAHWAR_API_PORT` | `8085` |
+
+The API refuses to start when a required value is missing, a value is out of range, the JWT secret is short /
+not base64 / not random, a CORS origin contains `*`, or the database is incompatible (§18). Configuration objects
+redact secrets in `toString()`. Template: `api/config/application.example.properties`.
+`spring.sql.init.mode=never`: the API never runs SQL scripts against the database.
+
+**Database account.** The API must not run as `sa` in production. Create a dedicated login with only what the
+implemented endpoints need (extend per phase):
+
+```sql
+-- run by a DBA, once per environment; password from a secret store, never committed
+CREATE LOGIN almahwar_api WITH PASSWORD = '<from secret store>', CHECK_POLICY = ON;
+USE AlMahwarDB;
+CREATE USER almahwar_api FOR LOGIN almahwar_api;
+GRANT SELECT ON dbo.Schema_Info TO almahwar_api;
+GRANT SELECT ON dbo.Roles TO almahwar_api;
+GRANT SELECT ON dbo.Users TO almahwar_api;
+GRANT UPDATE (failed_login_attempts, locked_until, last_login_at, password_hash, updated_at) ON dbo.Users TO almahwar_api;
+GRANT INSERT ON dbo.Audit_Log TO almahwar_api;
+GRANT SELECT ON dbo.Products TO almahwar_api;
+GRANT SELECT ON dbo.Categories TO almahwar_api;
+GRANT SELECT ON dbo.Units TO almahwar_api;
+GRANT SELECT ON dbo.Brands TO almahwar_api;
+```
+
+(Phase 1 verification used the existing development login on the local development container only.)
+
+## 7. Authentication design
+
+`POST /api/v1/auth/login` `{ "username", "password" }` → `200 { accessToken, tokenType: "Bearer", expiresIn,
+expiresAt, mustChangePassword, user }`, `Cache-Control: no-store`.
+
+`AuthService.login` follows the desktop's `AuthServiceImpl.login` step for step:
+
+1. Unknown username → in-memory throttling with the same limits, a dummy PBKDF2 verification (equal timing), audit
+   `LOGIN_FAILED` (user NULL), answer `401 INVALID_CREDENTIALS`.
+2. Account locked (`Users.locked_until` in the future, server clock) → `429 ACCOUNT_LOCKED` + `Retry-After`, even with
+   the correct password; audit.
+3. Wrong password → the desktop's atomic `UPDATE … OUTPUT` on the Users row (count, lock at 5 for 300 s); audit
+   `LOGIN_FAILED` and, when it locks, `ACCOUNT_LOCKED`; answer `401 INVALID_CREDENTIALS` (or 429 when it locked).
+4. Correct password but disabled → `403 ACCOUNT_DISABLED`; role without permissions (e.g. `MANAGER`) →
+   `403 NO_PERMISSIONS`. Both only after a correct password, as on the desktop.
+5. Success → reset counter, upgrade an old-iteration hash, set `last_login_at`, audit `LOGIN`, issue token.
+
+Unknown user and wrong password produce byte-identical answers (no "attempts left" hint). The login is deliberately
+**not transactional**: the failure counter and audit rows must persist although the request fails.
+Audit entries carry `machine_name = 'API/<client address>'`, so desktop screens show API activity distinctly.
+Passwords are converted to `char[]` and wiped after use; DTOs redact them in `toString()`; nothing logs request bodies.
+
+**Interaction with the desktop lockout (no bypass):** the lock lives on the shared Users row and is checked/updated
+with the same SQL by both clients — 5 wrong passwords split across desktop and API still lock the account for both.
+Unknown usernames are throttled per process (desktop and API each), as today.
+
+**Brute force / rate limiting.** Per-account protection is the shared DB lock. At most *N* (CPU count) PBKDF2
+verifications run at once; further logins wait ≤ 5 s, then get `429 TOO_MANY_REQUESTS` (protects the CPU: 600,000
+iterations per attempt). **Before the API is reachable from the Internet**, add per-IP rate limiting at the reverse
+proxy (e.g. nginx `limit_req` on `/api/v1/auth/login`) — no third-party library was added for this in Phase 1.
+Note that the per-account lock can be abused to lock out a known user (also true on the desktop); per-IP limits
+mitigate it.
+
+## 8. Authorization design
+
+* Every request except `GET /api/v1/health`, `GET /api/v1/health/ready`, `POST /api/v1/auth/login` (and CORS
+  pre-flight) requires a valid bearer token — deny by default, including unknown paths (401).
+* The token's user is reloaded from the database per request (`UserPrincipalLoader`): deleted / disabled user or a
+  changed password ⇒ `401 SESSION_REVOKED`; a changed role applies at once.
+* Permissions are the desktop's fine-grained `Permission` set for the role, exposed as authorities `PERM_<NAME>`.
+* Checks live in the **service layer** (`@PreAuthorize("hasAnyAuthority('PERM_PRODUCTS_VIEW','PERM_PRODUCTS')")`),
+  plus data-level rules inside the service (cost only with `PRODUCT_COST`; inactive products only with `PRODUCTS`) —
+  mirroring the desktop's `security.requirePermission(...)` in its services.
+* No new roles. `ADMIN`, `ACCOUNTANT`, `CASHIER`, `STOREKEEPER` as on the desktop; `MANAGER` has no permissions.
+* `GET /api/v1/auth/me` returns the permission list so the app can hide actions — a convenience, never a control.
+
+## 9. Password compatibility
+
+Stored format (unchanged): `pbkdf2_sha256$<iterations>$<base64 salt 16 B>$<base64 key 32 B>`,
+PBKDF2-HMAC-SHA256, 600,000 iterations. The API verifies existing hashes as they are; it never migrates or rewrites
+hashes except the desktop's own rule (a hash with fewer iterations is re-hashed on successful login, which does not
+change `password_changed_at`). `PasswordCompatibilityTest` cross-verifies with the frozen desktop class; the
+SQL Server integration test logs in users whose hashes were produced by the desktop class; the live smoke test logged
+in real desktop-created accounts.
+
+## 10. Token lifecycle
+
+**Threat model.** A stolen access token lets its holder act as the user until it expires; a stolen signing key lets
+anyone mint tokens. Mitigations: short lifetime, HTTPS only, key only in server configuration, per-request user
+reload (disable / password change / role change take effect immediately), no sensitive claims.
+
+| Aspect | Phase 1 |
+|---|---|
+| Format | JWS (JWT) HS256, Nimbus JOSE via Spring Security — no custom crypto |
+| Claims | `sub` (user id), `iss` `almahwar-api`, `aud` `almahwar-mobile`, `iat`, `exp`, `jti`, `pwv` (password version) |
+| Not in the token | password, hash, role, permissions, names |
+| Lifetime | 15 min (configurable, max 1 h); 60 s clock skew |
+| Validation | signature, algorithm (HS256 only, `alg:none` rejected), expiry, issuer, audience, then DB state |
+| Revocation | `pwv` = `Users.password_changed_at` (compared by equality, no clock agreement needed): password change / admin reset revokes all earlier tokens; disabling the user revokes at once |
+| Refresh | **not implemented** — the client logs in again after expiry |
+| Logout | not implemented (stateless); client discards the token |
+| Key rotation | change `ALMAHWAR_API_JWT_SECRET` → all tokens invalid (users log in again) |
+
+**Planned refresh-token design (needs an approved schema migration — not done in Phase 1):** opaque random refresh
+token (≥ 256 bits) stored **hashed** in a new table (e.g. `Api_Refresh_Tokens`: id, user_id, token_hash, device
+label, created_at, expires_at, last_used_at, revoked_at, replaced_by), rotation on every use with reuse detection
+(re-use of a rotated token revokes the family), absolute lifetime (e.g. 30 days) and idle timeout matching the
+desktop policy, revocation on logout / password change / disable. Mobile storage: Keychain / Android Keystore
+(`flutter_secure_storage`). This requires a schema change → schedule as an explicit migration phase.
+
+## 11. Error model
+
+One JSON shape for every error (`ApiError`):
+
+```json
+{ "timestamp": "2026-10-07T10:15:30Z", "status": 400, "code": "VALIDATION_ERROR",
+  "message": "البيانات المرسلة غير صحيحة.", "path": "/api/v1/products", "requestId": "…",
+  "fieldErrors": [ { "field": "size", "message": "الحد الأقصى 100." } ] }
+```
+
+Codes (`ErrorCode`): `VALIDATION_ERROR`, `MALFORMED_REQUEST` (400) · `UNAUTHORIZED`, `INVALID_CREDENTIALS`,
+`SESSION_REVOKED` (401) · `ACCOUNT_DISABLED`, `NO_PERMISSIONS`, `PASSWORD_CHANGE_REQUIRED`, `FORBIDDEN` (403) ·
+`NOT_FOUND` (404) · `METHOD_NOT_ALLOWED` (405) · `UNSUPPORTED_MEDIA_TYPE` (415) · `ACCOUNT_LOCKED`,
+`TOO_MANY_REQUESTS` (429, `Retry-After`) · `INTERNAL_ERROR` (500) · `SERVICE_UNAVAILABLE` (503, database down —
+including a transaction that cannot obtain a connection).
+
+Clients branch on `code`, never on `message` (Arabic, for display). Responses never contain stack traces, SQL,
+database messages, class names, file paths, hosts or credentials (tested); details are logged server-side under the
+`requestId`, which is also returned in the `X-Request-Id` header.
+
+## 12. DTO rules
+
+* Requests and responses are dedicated records (`LoginRequest`, `LoginResponse`, `CurrentUserResponse`,
+  `ProductResponse`, `PageResponse`) — never database rows or desktop models.
+* No hash, salt, lock counters or other security internals in any response (tested).
+* Money and quantities are JSON **strings** with the database scale (`"12.500"`) — exact, no floating point on clients.
+* Fields that depend on permissions are omitted when not allowed (`purchasePrice`); the repository does not even
+  select the cost for users without `PRODUCT_COST`.
+
+## 13. Transaction rules
+
+* The transaction boundary is the **service method** (`@Transactional`); repositories join it. Read services use
+  `@Transactional(readOnly = true)` (count + page on one connection).
+* Every future business mutation (post sale, post purchase, return, payment, stock adjustment) runs as **one**
+  read-write transaction in one service call: the client never coordinates several calls into one business result.
+* Lock order must follow the desktop's (`ProductDao.lockForStockChange`: `UPDLOCK, ROWLOCK`, `product_id` ascending)
+  so desktop and API cannot deadlock each other.
+* Audit entries for a mutation are written in the same transaction (desktop rule); authentication audit is the
+  exception (written outside any transaction so failures persist).
+* Idempotency keys for posting endpoints (mobile retries over flaky networks) are planned for the mutation phases.
+
+## 14. Pagination
+
+`page` (0-based, ≤ 10,000), `size` (1–100, default 20), `sort` = allow-listed field with optional `,asc|,desc`
+(products: `name`, `code`, `salePrice`, `quantity`). Response: `{ items, page, size, totalItems, totalPages }`.
+Bounds are Bean Validation constraints (400 with `fieldErrors`); the sort maps to constant SQL with a unique
+tie-breaker (`product_id`), so client text never reaches `ORDER BY`; paging uses bound
+`OFFSET ? ROWS FETCH NEXT ? ROWS ONLY`. Search text is matched literally (`%`, `_`, `[` escaped as on the desktop).
+
+## 15. CORS
+
+Native mobile apps are not subject to CORS. Browser origins (Flutter Web, tools) must be listed exactly in
+`almahwar.api.cors.allowed-origins`; empty (default) = no cross-origin browser access; `*` is refused at startup;
+credentials (cookies) are not allowed — tokens travel in the `Authorization` header.
+
+## 16. Logging
+
+* Every line carries the request id (`%X{requestId}`); the id is taken from a safe caller `X-Request-Id`
+  (`[A-Za-z0-9-]{8,64}`) or generated — no log injection.
+* Never logged: request bodies, passwords, hashes, tokens, `Authorization` headers, JWT secret, DB password
+  (live-run log scanned: none present). Login success logs only user id and role.
+* Unexpected / database errors are logged with stack trace server-side only.
+
+## 17. HTTPS and deployment assumptions
+
+* Production: the API listens on a private interface; a reverse proxy (nginx / IIS ARR / Caddy) terminates TLS
+  (TLS 1.2+), redirects HTTP → HTTPS, sends HSTS, and applies per-IP rate limits. Plain HTTP is acceptable only on a
+  developer machine.
+* Behind the proxy, set `server.forward-headers-strategy=framework` **only** together with a trusted-proxy
+  configuration, so the client address in audit entries is correct and cannot be spoofed.
+* SQL Server traffic stays encrypted (`encrypt=true`, certificate validated; `trust-server-certificate=true` only for
+  a development server).
+* No cloud deployment in Phase 1.
+
+## 18. Database compatibility
+
+At startup (`StartupSchemaVerifier`, before the HTTP port opens) and on `GET /api/v1/health/ready`:
+connection works · database exists and is accessible · `dbo.Schema_Info` exists · version is **exactly** `1.10.0` ·
+required tables exist (`Schema_Info, Users, Roles, Audit_Log, Products, Categories, Units, Brands`; grows per phase).
+Any failure stops startup with a clear log message and **nothing is created, repaired or migrated**. Readiness
+answers only `READY` / `NOT_READY` (no details), checked at most every 5 s. Schema changes needed by later phases
+are listed in §20 and require an explicitly approved migration.
+
+## 19. Testing strategy
+
+Run from `api/`: `mvn verify` (no database needed). SQL Server integration: install the desktop artifact once
+(`mvn install` in the repository root — needed for the parity tests), then set `ALMAHWAR_IT_DB_HOST`, `_PORT`,
+`_USER`, `_PASSWORD`, `_TRUST_SERVER_CERTIFICATE` and run `mvn verify -Dalmahwar.it=true`.
+
+| Suite | What it proves |
+|---|---|
+| `HealthAndErrorModelTest` | context starts; liveness/readiness; 401 format; 404/405/415; malformed JSON; request id; security headers; OpenAPI off by default |
+| `AuthenticationApiTest` | login success; same answer for unknown user / wrong password; lock at limit; locked with correct password; unknown-user throttling; disabled only after correct password; MANAGER refused; hash upgrade; validation; forged / expired / wrong-audience / wrong-issuer / `alg:none` tokens; revocation on disable / password change / delete; DB down → 503; must-change-password gate |
+| `ProductApiTest` | 200 per role; cost hidden / shown; inactive rule; validated paging & sort (injection attempts); 403; DB errors leak nothing |
+| `DatabaseUnavailableTest` | real pool + transaction manager, DB down → 503 |
+| `DevProfileAndCorsTest` | OpenAPI in `dev` profile; CORS exact origin, no credentials |
+| `ConfigurationValidationTest` | missing / weak secrets and credentials stop startup; secrets never printed; bundled defaults clean |
+| `PasswordCompatibilityTest`, `PermissionMatrixParityTest`, `LoginAttemptTrackerTest` | parity with frozen desktop 1.0.0 |
+| `SchemaCompatibilityCheckerTest` | exact 1.10.0; missing tables; unreachable / 4060; startup refusal |
+| `ProductSortTest`, `ApiArchitectureTest` | allow-list, LIKE escaping, page bounds; layering, versioned routes, no JPA / Flutter |
+| `SqlServerIntegrationTest` (opt-in) | real SQL Server on a **temporary database** built from `database/01_create_database.sql` and dropped afterwards: desktop-hashed users log in, shared lock on the row, audit rows, cost visibility, paging/sort/search, hash upgrade, revocation, schema mismatch refused at startup |
+
+AlMahwarDB is never used by automated tests.
+
+## 20. Planned API phases (adjusted to the codebase)
+
+**Decision before the mutation phases (5–8):** the desktop services already depend on an injectable
+`SecurityContext` interface, but their DAOs use static `DatabaseConnection` / `TransactionManager`. Re-implementing
+sales/purchase posting in the API would duplicate the most delicate code (stock ledger, costing, account ledger,
+credit limits). Recommended: in Phase 2–3, a time-boxed spike evaluating **reuse of the desktop service/DAO layer as a
+library** behind a request-scoped `SecurityContext` adapter (and, if needed, a pooled connection provider) — which
+may require a small, separately approved desktop maintenance release (e.g. 1.0.1 / 1.1.0) to make the connection
+source injectable without changing behaviour. Until decided, only read endpoints are ported.
+
+| Phase | Scope | Notes / prerequisites |
+|---|---|---|
+| 1 | Foundation, security, health, POC (this phase) | done — awaiting review |
+| 2 | Auth completion: change own password (desktop `CredentialPolicy`), logout, token refresh | refresh tokens need **schema migration** (§10) → approve migration first; parity tests for `CredentialPolicy` |
+| 3 | Products & inventory reads: product detail / barcode lookup, categories, brands, units, stock balances, movements | read-only; `INVENTORY` permission rules; reuse-decision spike |
+| 4 | Customers / suppliers reads (+ balances / statements with `*_BALANCE_VIEW`) | read first; edits after |
+| 5 | Sales / POS posting | one transaction per posting, desktop lock order, idempotency keys, credit limit & price-override rules |
+| 6 | Purchases | same pattern as 5 |
+| 7 | Financial operations (cashbox, expenses, payments) | balanced ledger entries as on the desktop |
+| 8 | Returns, quotations | against original documents; status workflow |
+| 9 | Reports (read-only, paged / aggregated; Excel export later) | heavy queries: limits and timeouts |
+| 10 | Production hardening & deployment | reverse proxy + TLS, per-IP rate limits, least-privilege login, monitoring, key management, load test, backup of secrets |
+
+Flutter work starts only after the API contract and security foundation are accepted.
+
+## Known limitations (Phase 1)
+
+* No refresh token / logout / password change endpoint; users with `must_change_password` can only call
+  `/auth/me` and must change the password on the desktop for now.
+* Access tokens cannot be revoked individually before expiry (≤ 15 min) except via disable / password change.
+* No per-IP rate limiting inside the API (planned at the reverse proxy).
+* The unknown-username throttle is per API process (as on the desktop, per desktop process).
+* The password arrives as a JSON string, which cannot be wiped from memory (converted to `char[]` and wiped after).
