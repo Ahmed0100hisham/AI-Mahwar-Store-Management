@@ -19,6 +19,9 @@ public class User {
     private LocalDateTime lockedUntil;
     /** Seconds until the lock expires, computed with the database server clock; 0 if not locked. */
     private long lockSecondsRemaining;
+    /** Set by an admin password reset: the next login must choose a new password first. */
+    private boolean mustChangePassword;
+    private LocalDateTime passwordChangedAt;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
@@ -61,6 +64,12 @@ public class User {
 
     public long getLockSecondsRemaining() { return lockSecondsRemaining; }
     public void setLockSecondsRemaining(long lockSecondsRemaining) { this.lockSecondsRemaining = lockSecondsRemaining; }
+
+    public boolean isMustChangePassword() { return mustChangePassword; }
+    public void setMustChangePassword(boolean mustChangePassword) { this.mustChangePassword = mustChangePassword; }
+
+    public LocalDateTime getPasswordChangedAt() { return passwordChangedAt; }
+    public void setPasswordChangedAt(LocalDateTime passwordChangedAt) { this.passwordChangedAt = passwordChangedAt; }
 
     public boolean isLocked() {
         return lockSecondsRemaining > 0;

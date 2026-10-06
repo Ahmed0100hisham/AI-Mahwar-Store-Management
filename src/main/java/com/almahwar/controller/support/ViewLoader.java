@@ -24,6 +24,33 @@ public final class ViewLoader {
     }
 
     /**
+     * Tables without their own empty-state text get an Arabic one (JavaFX's default is English); tables inside
+     * tabs, scroll panes and split panes are included.
+     */
+    static void arabicPlaceholders(javafx.scene.Node node) {
+        if (node instanceof javafx.scene.control.TableView<?> table && table.getPlaceholder() == null) {
+            javafx.scene.control.Label empty = new javafx.scene.control.Label("لا توجد بيانات لعرضها");
+            empty.getStyleClass().add("muted");
+            table.setPlaceholder(empty);
+        }
+        if (node instanceof javafx.scene.control.TabPane tabs) {
+            tabs.getTabs().forEach(t -> {
+                if (t.getContent() != null) {
+                    arabicPlaceholders(t.getContent());
+                }
+            });
+        } else if (node instanceof javafx.scene.control.ScrollPane scroll && scroll.getContent() != null) {
+            arabicPlaceholders(scroll.getContent());
+        } else if (node instanceof javafx.scene.control.SplitPane split) {
+            split.getItems().forEach(ViewLoader::arabicPlaceholders);
+        } else if (node instanceof javafx.scene.control.TitledPane titled && titled.getContent() != null) {
+            arabicPlaceholders(titled.getContent());
+        } else if (node instanceof Parent parent) {
+            parent.getChildrenUnmodifiable().forEach(ViewLoader::arabicPlaceholders);
+        }
+    }
+
+    /**
      * Loads a view from {@code src/main/resources/fxml}.
      *
      * @param fxmlName file name, e.g. {@code "main.fxml"}
@@ -44,6 +71,7 @@ public final class ViewLoader {
         try {
             FXMLLoader loader = new FXMLLoader(url);
             Parent root = loader.load();
+            arabicPlaceholders(root);
             controllerSetup.accept(loader.getController());
             return root;
         } catch (IOException e) {

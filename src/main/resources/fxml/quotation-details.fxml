@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import com.almahwar.controller.support.Icon?>
+
+<!-- One quotation: header, lines, totals, terms and the workflow actions allowed by its status and the user's permissions. -->
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.almahwar.controller.QuotationDetailsController"
+            fitToWidth="true" styleClass="content-scroll">
+    <VBox styleClass="page-content" spacing="16">
+
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <Button text="رجوع" styleClass="btn, btn-secondary, btn-back" onAction="#onBack">
+                <graphic><Icon name="back"/></graphic>
+            </Button>
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label fx:id="numberLabel" styleClass="page-title"/>
+                    <HBox fx:id="badgesBox" spacing="6" alignment="CENTER_LEFT"/>
+                </HBox>
+                <Label fx:id="customerLabel" styleClass="page-subtitle"/>
+            </VBox>
+        </HBox>
+
+        <FlowPane hgap="8" vgap="8" alignment="CENTER_LEFT">
+            <Button fx:id="convertButton" text="تحويل إلى فاتورة بيع" styleClass="btn, btn-primary" onAction="#onConvert"/>
+            <Button fx:id="openSaleButton" styleClass="btn, btn-primary" onAction="#onOpenSale"/>
+            <Button fx:id="sendButton" text="تعليم كمُرسَل" styleClass="btn, btn-primary" onAction="#onSend"/>
+            <Button fx:id="acceptButton" text="قبول العرض" styleClass="btn, btn-secondary" onAction="#onAccept"/>
+            <Button fx:id="rejectButton" text="رفض العرض" styleClass="btn, btn-secondary" onAction="#onReject"/>
+            <Button fx:id="editButton" text="تعديل" styleClass="btn, btn-secondary" onAction="#onEdit">
+                <graphic><Icon name="edit"/></graphic>
+            </Button>
+            <Button fx:id="reopenButton" text="إعادة فتح للتعديل" styleClass="btn, btn-secondary" onAction="#onReopen"/>
+            <Button fx:id="printButton" text="معاينة وطباعة" styleClass="btn, btn-secondary" onAction="#onPrint">
+                <graphic><Icon name="print"/></graphic>
+            </Button>
+            <Button fx:id="deleteButton" text="حذف المسودة" styleClass="btn, btn-danger" onAction="#onDelete"/>
+        </FlowPane>
+
+        <HBox fx:id="noteBox" spacing="10" alignment="CENTER_LEFT">
+            <Label text="ملاحظة القبول / الرفض" styleClass="field-label" minWidth="-Infinity"/>
+            <TextField fx:id="noteField" promptText="اختياري: سبب الرفض أو تفاصيل موافقة العميل" HBox.hgrow="ALWAYS"/>
+        </HBox>
+
+        <Label fx:id="pageMessage" wrapText="true" maxWidth="Infinity" visible="false" managed="false"/>
+
+        <VBox styleClass="card" spacing="12">
+            <Label text="بيانات العرض" styleClass="card-title"/>
+            <GridPane fx:id="infoGrid" hgap="24" vgap="10">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="120"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                    <ColumnConstraints minWidth="120"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+            </GridPane>
+        </VBox>
+
+        <VBox styleClass="card" spacing="12">
+            <Label text="الأصناف" styleClass="card-title"/>
+            <TableView fx:id="itemsTable" prefHeight="280" minHeight="180">
+                <columns>
+                    <TableColumn fx:id="lineNoColumn" text="#" prefWidth="40" sortable="false"/>
+                    <TableColumn fx:id="codeColumn" text="الكود" prefWidth="90" sortable="false"/>
+                    <TableColumn fx:id="productColumn" text="الصنف" prefWidth="230" sortable="false"/>
+                    <TableColumn fx:id="quantityColumn" text="الكمية" prefWidth="90" sortable="false"/>
+                    <TableColumn fx:id="unitColumn" text="الوحدة" prefWidth="70" sortable="false"/>
+                    <TableColumn fx:id="priceColumn" text="السعر" prefWidth="100" sortable="false"/>
+                    <TableColumn fx:id="discountColumn" text="الخصم" prefWidth="90" sortable="false"/>
+                    <TableColumn fx:id="lineTotalColumn" text="الإجمالي" prefWidth="110" sortable="false"/>
+                    <TableColumn fx:id="availableColumn" text="المتوفر حاليًا" prefWidth="100" sortable="false"/>
+                </columns>
+            </TableView>
+            <HBox spacing="12" alignment="CENTER_LEFT">
+                <Label fx:id="termsLabel" wrapText="true" HBox.hgrow="ALWAYS" maxWidth="Infinity"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <VBox styleClass="totals-card" spacing="6" minWidth="320">
+                    <HBox styleClass="total-row"><Label text="مجموع الأصناف"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="subtotalLabel" styleClass="total-value"/></HBox>
+                    <HBox styleClass="total-row"><Label text="خصم العرض"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="discountLabel" styleClass="total-value"/></HBox>
+                    <HBox styleClass="total-row, total-main"><Label text="الإجمالي"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="totalLabel" styleClass="total-value"/></HBox>
+                </VBox>
+            </HBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

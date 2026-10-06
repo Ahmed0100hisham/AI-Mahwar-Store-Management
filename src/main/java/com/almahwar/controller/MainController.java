@@ -24,6 +24,7 @@ import com.almahwar.controller.support.AlertUtil;
 import com.almahwar.controller.support.Icons;
 import com.almahwar.util.MoneyUtil;
 import com.almahwar.controller.support.Navigator;
+import com.almahwar.controller.support.ViewLoader;
 import com.almahwar.util.QuantityUtil;
 import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
@@ -36,8 +37,10 @@ import javafx.scene.chart.AreaChart;
 import javafx.scene.chart.NumberAxis;
 import javafx.scene.chart.XYChart;
 import javafx.scene.control.Button;
+import javafx.scene.control.Hyperlink;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressBar;
+import javafx.scene.control.ScrollPane;
 import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableView;
@@ -62,7 +65,9 @@ import java.text.DecimalFormatSymbols;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Locale;
 import java.util.function.Function;
 import java.util.logging.Level;
@@ -98,6 +103,8 @@ public class MainController {
     @FXML private Label footerCurrencyLabel;
 
     @FXML private VBox navContainer;
+    @FXML private StackPane contentArea;
+    @FXML private ScrollPane dashboardView;
 
     // Dashboard
     @FXML private Label welcomeLabel;
@@ -128,6 +135,7 @@ public class MainController {
 
     @FXML private VBox lowStockCard;
     @FXML private Label lowStockCountLabel;
+    @FXML private Hyperlink lowStockAllLink;
     @FXML private TableView<LowStockItem> lowStockTable;
     @FXML private TableColumn<LowStockItem, LowStockItem> lowNameColumn;
     @FXML private TableColumn<LowStockItem, String> lowQtyColumn;
@@ -147,6 +155,7 @@ public class MainController {
     private TrendRange trendRange = TrendRange.LAST_30_DAYS;
     private Timeline autoRefresh;
     private boolean loading;
+    private final Map<NavigationItem, Button> navButtons = new EnumMap<>(NavigationItem.class);
 
     @FXML
     private void initialize() {
@@ -166,10 +175,17 @@ public class MainController {
 
         footerUserLabel.setText("المستخدم: " + user.getUsername()
                 + "  •  دخول " + session.getLoginAt().format(TIME));
-        footerVersionLabel.setText("الإصدار " + cfg.appVersion());
+        footerVersionLabel.setText("الإصدار " + ViewSupport.ltr(cfg.appVersion()));
         footerCurrencyLabel.setText("العملة: " + cfg.currencyCode() + " (" + cfg.currencySymbol() + ")");
 
         buildNavigation(session);
+        // KPI cards fill equal columns: three on a normal / wide window (3 × 3 for the admin's nine cards, at 1366
+        // and at 1920 alike), two on a narrow one — never a lone card on the last row because of a fixed width
+        kpiGrid.widthProperty().addListener((o, old, width) -> {
+            double w = width.doubleValue();
+            int columns = w >= 900 ? 3 : 2;
+            kpiGrid.setPrefTileWidth(Math.max(240, Math.floor((w - kpiGrid.getHgap() * (columns - 1)) / columns) - 1));
+        });
         setUpChart();
         setUpTables();
         loadDashboard();
@@ -179,43 +195,142 @@ public class MainController {
 
     // ---------- Navigation ----------
 
+    /**
+     * Side-menu sections, in display order (presentation only: who sees an entry is still decided by
+     * {@link NavigationItem#isVisibleTo}; a section without a visible entry is not shown).
+     */
+    private static final List<Map.Entry<String, List<NavigationItem>>> NAV_SECTIONS = List.of(
+            Map.entry("", List.of(NavigationItem.HOME)),
+            Map.entry("المبيعات", List.of(NavigationItem.POINT_OF_SALE, NavigationItem.SALES, NavigationItem.QUOTATIONS,
+                    NavigationItem.RETURNS, NavigationItem.CUSTOMERS)),
+            Map.entry("المخزون والمشتريات", List.of(NavigationItem.PRODUCTS, NavigationItem.INVENTORY,
+                    NavigationItem.PURCHASES, NavigationItem.SUPPLIERS)),
+            Map.entry("المالية", List.of(NavigationItem.CASH, NavigationItem.EXPENSES)),
+            Map.entry("التقارير والإدارة", List.of(NavigationItem.REPORTS, NavigationItem.USERS, NavigationItem.SETTINGS,
+                    NavigationItem.BACKUP)));
+
     private void buildNavigation(UserSession session) {
         navContainer.getChildren().clear();
-        Label header = new Label("القائمة الرئيسية");
-        header.getStyleClass().add("sidebar-section");
-        navContainer.getChildren().add(header);
+        java.util.Set<NavigationItem> placed = java.util.EnumSet.noneOf(NavigationItem.class);
+        for (Map.Entry<String, List<NavigationItem>> section : NAV_SECTIONS) {
+            List<NavigationItem> visible = section.getValue().stream().filter(i -> i.isVisibleTo(session)).toList();
+            placed.addAll(section.getValue());
+            addNavSection(section.getKey(), visible);
+        }
+        // any entry not assigned to a section above still appears (never hidden by the layout)
+        addNavSection("أخرى", java.util.Arrays.stream(NavigationItem.values())
+                .filter(i -> !placed.contains(i) && i.isVisibleTo(session)).toList());
+        setActiveNav(NavigationItem.HOME);
+        lowStockAllLink.setVisible(NavigationItem.INVENTORY.isVisibleTo(session)
+                || NavigationItem.PRODUCTS.isVisibleTo(session));
+    }
 
-        for (NavigationItem item : NavigationItem.values()) {
-            if (!item.isVisibleTo(session)) {
-                continue;
-            }
+    private void addNavSection(String title, List<NavigationItem> items) {
+        if (items.isEmpty()) {
+            return;
+        }
+        if (!title.isEmpty()) {
+            Label header = new Label(title);
+            header.getStyleClass().add("sidebar-section");
+            navContainer.getChildren().add(header);
+        }
+        for (NavigationItem item : items) {
             Button button = new Button(item.getLabelAr(), Icons.node(Icons.of(item), "nav-icon"));
             button.getStyleClass().add("nav-button");
             button.setGraphicTextGap(12);
             button.setMaxWidth(Double.MAX_VALUE);
-            if (item == NavigationItem.HOME) {
-                button.getStyleClass().add("nav-button-active");
-                button.setOnAction(e -> loadDashboard());
-            } else {
-                button.setOnAction(e -> onNavigate(item));
-            }
+            button.setOnAction(e -> onNavigate(item));
+            navButtons.put(item, button);
             navContainer.getChildren().add(button);
         }
     }
 
-    /** Placeholder until each module is built; access is re-checked here, not only by hiding buttons. */
+    /** Access is re-checked here, not only by hiding buttons (the services check it again). */
     private void onNavigate(NavigationItem item) {
         UserSession session = security.getSession().orElse(null);
         if (!item.isVisibleTo(session)) {
             AlertUtil.warning("غير مصرح", "ليس لديك صلاحية الوصول إلى: " + item.getLabelAr());
             return;
         }
-        AlertUtil.info("قيد التطوير", "وحدة \"" + item.getLabelAr() + "\" سيتم تطويرها في المراحل القادمة.");
+        switch (item) {
+            case HOME -> showHome();
+            case PRODUCTS -> openModule(item, "products.fxml", null);
+            case INVENTORY -> openModule(item, "inventory.fxml", null);
+            case CUSTOMERS -> openModule(item, "customers.fxml", null);
+            case SUPPLIERS -> openModule(item, "suppliers.fxml", null);
+            case PURCHASES -> openModule(item, "purchases.fxml", null);
+            case POINT_OF_SALE -> this.<PosController>openModule(item, "pos.fxml", c -> c.open(null, null));
+            case SALES -> openModule(item, "sales.fxml", null);
+            case CASH -> openModule(item, "cashbox.fxml", null);
+            case EXPENSES -> openModule(item, "expenses.fxml", null);
+            case RETURNS -> openModule(item, "returns.fxml", null);
+            case QUOTATIONS -> openModule(item, "quotations.fxml", null);
+            case REPORTS -> openModule(item, "reports.fxml", null);
+            case SETTINGS -> openModule(item, "settings.fxml", null);
+            case USERS -> openModule(item, "users.fxml", null);
+            case BACKUP -> openModule(item, "backup.fxml", null);
+            default -> AlertUtil.info("قيد التطوير", "وحدة \"" + item.getLabelAr() + "\" سيتم تطويرها في المراحل القادمة.");
+        }
+    }
+
+    private void showHome() {
+        Navigator.leave(() -> {
+            contentArea.getChildren().setAll(dashboardView);
+            setActiveNav(NavigationItem.HOME);
+            loadDashboard();   // figures may have changed in another module
+        });
+    }
+
+    /** Replaces the page in the content area; {@code setup} receives the module's controller. */
+    private <C> void openModule(NavigationItem item, String fxml, java.util.function.Consumer<C> setup) {
+        // every page change passes the leave guard (an unsaved POS cart is never lost silently)
+        Navigator.leave(() -> {
+            Node page = ViewLoader.<C>load(fxml, c -> {
+                if (setup != null) {
+                    setup.accept(c);
+                }
+            });
+            contentArea.getChildren().setAll(page);
+            setActiveNav(item);
+        });
+    }
+
+    private void setActiveNav(NavigationItem active) {
+        navButtons.forEach((item, button) -> {
+            button.getStyleClass().remove("nav-button-active");
+            if (item == active) {
+                button.getStyleClass().add("nav-button-active");
+            }
+        });
+    }
+
+    private boolean isDashboardShown() {
+        return contentArea.getChildren().contains(dashboardView);
+    }
+
+    /** "عرض الكل" on the low-stock list: the full list in the inventory (or products) module. */
+    @FXML
+    private void onShowAllLowStock() {
+        UserSession session = security.getSession().orElse(null);
+        if (NavigationItem.INVENTORY.isVisibleTo(session)) {
+            this.<InventoryController>openModule(NavigationItem.INVENTORY, "inventory.fxml",
+                    InventoryController::showLowStockOnly);
+        } else if (NavigationItem.PRODUCTS.isVisibleTo(session)) {
+            this.<ProductsController>openModule(NavigationItem.PRODUCTS, "products.fxml",
+                    ProductsController::showLowStockOnly);
+        }
+    }
+
+    /** Any logged-in user may change their own password (unsaved work is protected first). */
+    @FXML
+    private void onChangePassword() {
+        Navigator.leave(() -> Navigator.showChangePassword(false));
     }
 
     @FXML
     private void onLogout() {
-        if (AlertUtil.confirm("تسجيل الخروج", "هل تريد تسجيل الخروج من النظام؟")) {
+        // with an unsaved cart the POS itself asks (complete / hold / stay / clear) instead of this question
+        if (Navigator.hasUnsavedWork() || AlertUtil.confirm("تسجيل الخروج", "هل تريد تسجيل الخروج من النظام؟")) {
             Navigator.logout();
         }
     }
@@ -231,7 +346,11 @@ public class MainController {
         if (seconds <= 0) {
             return;
         }
-        autoRefresh = new Timeline(new KeyFrame(Duration.seconds(seconds), e -> loadDashboard()));
+        autoRefresh = new Timeline(new KeyFrame(Duration.seconds(seconds), e -> {
+            if (isDashboardShown()) {
+                loadDashboard();
+            }
+        }));
         autoRefresh.setCycleCount(Timeline.INDEFINITE);
         autoRefresh.play();
         // Stop when this view is replaced (logout / timeout), so no queries run after the session ends

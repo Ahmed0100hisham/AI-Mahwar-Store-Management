@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import com.almahwar.controller.support.Icon?>
+
+<!-- The cashbox / treasury: balance, today's movement, every Cash_Transactions row, manual deposit / withdrawal. -->
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.almahwar.controller.CashboxController" fitToWidth="true" styleClass="content-scroll">
+    <VBox styleClass="page-content" spacing="16">
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="الخزنة" styleClass="page-title"/>
+                <Label text="كل حركات الأموال (نقدًا، كي نت، تحويلات، شيكات). الرصيد = مجموع الوارد − مجموع الصادر، ولا يُعدَّل يدويًا."
+                       styleClass="page-subtitle" wrapText="true"/>
+            </VBox>
+            <Button fx:id="depositButton" text="إيداع" styleClass="btn, btn-primary" onAction="#onDeposit">
+                <graphic><Icon name="plus"/></graphic>
+            </Button>
+            <Button fx:id="withdrawButton" text="سحب" styleClass="btn, btn-secondary" onAction="#onWithdraw">
+                <graphic><Icon name="minus"/></graphic>
+            </Button>
+        </HBox>
+
+        <Label fx:id="pageMessage" wrapText="true" maxWidth="Infinity" visible="false" managed="false"/>
+
+        <HBox spacing="16">
+            <VBox styleClass="card, figure-card, figure-primary" spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="الرصيد الحالي" styleClass="kpi-title"/>
+                <Label fx:id="balanceLabel" styleClass="kpi-value, money"/>
+                <Label text="كل الطرق: نقدًا وكي نت وتحويل وشيك" styleClass="kpi-caption"/>
+            </VBox>
+            <VBox styleClass="card, figure-card, figure-success" spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="وارد اليوم" styleClass="kpi-title"/>
+                <Label fx:id="todayInLabel" styleClass="kpi-value, money"/>
+                <Label fx:id="todayLabel" styleClass="kpi-caption"/>
+            </VBox>
+            <VBox styleClass="card, figure-card, figure-danger" spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="صادر اليوم" styleClass="kpi-title"/>
+                <Label fx:id="todayOutLabel" styleClass="kpi-value, money"/>
+                <Label text="مشتريات، سداد موردين، مصروفات، سحب" styleClass="kpi-caption"/>
+            </VBox>
+            <VBox styleClass="card, figure-card, figure-info" spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="صافي حركة اليوم" styleClass="kpi-title"/>
+                <Label fx:id="todayNetLabel" styleClass="kpi-value, money"/>
+                <Label text="الوارد − الصادر" styleClass="kpi-caption"/>
+            </VBox>
+        </HBox>
+
+        <!-- Manual deposit / withdrawal -->
+        <VBox fx:id="formCard" styleClass="card, form-card" spacing="12" visible="false" managed="false">
+            <Label fx:id="formTitle" styleClass="card-title"/>
+            <Label fx:id="formAlert" wrapText="true" maxWidth="Infinity" visible="false" managed="false"/>
+            <GridPane hgap="16" vgap="8">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="20"/>
+                    <ColumnConstraints percentWidth="20"/>
+                    <ColumnConstraints percentWidth="30"/>
+                    <ColumnConstraints percentWidth="30"/>
+                </columnConstraints>
+                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                    <Label text="المبلغ (د.ك) *" styleClass="field-label"/>
+                    <TextField fx:id="amountField" promptText="0.000"/>
+                    <Label fx:id="amountError"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                    <Label text="الطريقة *" styleClass="field-label"/>
+                    <ComboBox fx:id="methodCombo" maxWidth="Infinity"/>
+                    <Label fx:id="methodError"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="2" GridPane.rowIndex="0">
+                    <Label text="السبب *" styleClass="field-label"/>
+                    <TextField fx:id="reasonField" promptText="مثال: فكة للخزنة، إيداع في البنك"/>
+                    <Label fx:id="reasonError"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="3" GridPane.rowIndex="0">
+                    <Label text="رقم المرجع" styleClass="field-label"/>
+                    <TextField fx:id="referenceField"/>
+                    <Label fx:id="referenceError"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="1" GridPane.columnSpan="4">
+                    <Label text="ملاحظات" styleClass="field-label"/>
+                    <TextField fx:id="notesField"/>
+                    <Label fx:id="notesError"/>
+                </VBox>
+            </GridPane>
+            <HBox spacing="10">
+                <Button fx:id="saveButton" styleClass="btn, btn-primary" onAction="#onSave"/>
+                <Button text="إلغاء" styleClass="btn, btn-secondary" onAction="#onCancelForm"/>
+            </HBox>
+        </VBox>
+
+        <VBox spacing="12" styleClass="card, module-card">
+            <FlowPane styleClass="filter-bar" hgap="10" vgap="8">
+                <TextField fx:id="searchField" promptText="بحث: رقم المستند، السبب، المرجع" prefWidth="220"/>
+                <Label text="من" styleClass="muted"/>
+                <DatePicker fx:id="fromDate" prefWidth="135"/>
+                <Label text="إلى" styleClass="muted"/>
+                <DatePicker fx:id="toDate" prefWidth="135"/>
+                <ComboBox fx:id="directionFilter" prefWidth="145" minWidth="140"/>
+                <ComboBox fx:id="sourceFilter" prefWidth="160" minWidth="150"/>
+                <ComboBox fx:id="methodFilter" prefWidth="140" minWidth="130"/>
+                <ComboBox fx:id="userFilter" prefWidth="175" minWidth="170"/>
+                <Button text="مسح" styleClass="btn, btn-secondary" onAction="#onClearFilters">
+                    <graphic><Icon name="filter-off"/></graphic>
+                </Button>
+            </FlowPane>
+            <TableView fx:id="movementsTable" prefHeight="520" styleClass="cash-table">
+                <columns>
+                    <TableColumn minWidth="150" fx:id="dateColumn" text="التاريخ والوقت" prefWidth="135"/>
+                    <TableColumn fx:id="noColumn" text="رقم الحركة" prefWidth="95"/>
+                    <TableColumn fx:id="typeColumn" text="النوع" prefWidth="110"/>
+                    <TableColumn fx:id="directionColumn" text="الاتجاه" prefWidth="70"/>
+                    <TableColumn fx:id="amountColumn" text="المبلغ" prefWidth="95"/>
+                    <TableColumn fx:id="methodColumn" text="الطريقة" prefWidth="85"/>
+                    <TableColumn fx:id="documentColumn" text="رقم المستند" prefWidth="115"/>
+                    <TableColumn fx:id="referenceColumn" text="المرجع" prefWidth="90"/>
+                    <TableColumn fx:id="userColumn" text="المستخدم" prefWidth="105"/>
+                    <TableColumn fx:id="notesColumn" text="البيان / ملاحظات" prefWidth="220"/>
+                </columns>
+            </TableView>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label fx:id="countLabel" styleClass="muted" wrapText="true"/>
+                <Region HBox.hgrow="ALWAYS"/>
+            </HBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

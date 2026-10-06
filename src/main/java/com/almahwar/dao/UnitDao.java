@@ -21,6 +21,18 @@ public class UnitDao extends BaseDao {
         return queryList(SELECT + " WHERE is_active = 1 ORDER BY unit_id", UnitDao::map);
     }
 
+    /** Arabic/English name or symbol contains {@code text}; {@code null} or blank text matches all. */
+    public List<Unit> search(String text, boolean activeOnly) {
+        String like = text == null || text.isBlank() ? "%" : likeContains(text);
+        return queryList(SELECT + " WHERE (name_ar LIKE ? OR name_en LIKE ? OR symbol LIKE ?)"
+                + (activeOnly ? " AND is_active = 1" : "") + " ORDER BY name_ar", UnitDao::map, like, like, like);
+    }
+
+    public boolean existsByName(String nameAr, Integer excludeId) {
+        return queryLong("SELECT COUNT(*) FROM dbo.Units WHERE name_ar = ? AND unit_id <> ?",
+                nameAr.trim(), excludeId == null ? 0 : excludeId) > 0;
+    }
+
     public Optional<Unit> findById(int unitId) {
         return queryOne(SELECT + " WHERE unit_id = ?", UnitDao::map, unitId);
     }
@@ -40,6 +52,10 @@ public class UnitDao extends BaseDao {
                 unit.getNameAr(), unit.getNameEn(), unit.getSymbol(), unit.isAllowsDecimal(), unit.isActive(),
                 unit.getUnitId());
         requireOneRow(rows, "Unit", unit.getUnitId());
+    }
+
+    public void setActive(int unitId, boolean active) {
+        requireOneRow(update("UPDATE dbo.Units SET is_active = ? WHERE unit_id = ?", active, unitId), "Unit", unitId);
     }
 
     /** Fails with a foreign-key error while products use this unit. */

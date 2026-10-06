@@ -43,6 +43,11 @@ public class DataAccessException extends RuntimeException {
         return code == UNIQUE_CONSTRAINT || code == UNIQUE_INDEX;
     }
 
+    /** The error names this constraint or index, e.g. {@code "UX_Products_barcode"}. */
+    public boolean violates(String constraintName) {
+        return messageContains(constraintName);
+    }
+
     /** A FOREIGN KEY was violated, e.g. deleting a category that still has products. */
     public boolean isForeignKeyViolation() {
         return errorCode() == CONSTRAINT_CONFLICT

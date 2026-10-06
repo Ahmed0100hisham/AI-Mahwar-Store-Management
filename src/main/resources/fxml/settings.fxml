@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import com.almahwar.controller.support.Icon?>
+
+<!-- Settings module: company profile, system settings, about. Unsaved changes are protected by the leave guard. -->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="pageHost" fx:controller="com.almahwar.controller.SettingsController" styleClass="module-root">
+
+    <ScrollPane fitToWidth="true" styleClass="content-scroll">
+        <VBox styleClass="page-content" spacing="16">
+            <HBox alignment="CENTER_LEFT" spacing="12">
+                <VBox spacing="4" HBox.hgrow="ALWAYS">
+                    <Label text="الإعدادات" styleClass="page-title"/>
+                    <Label text="بيانات الشركة التي تظهر في الفواتير وعروض الأسعار والتقارير، وإعدادات النظام"
+                           styleClass="page-subtitle" wrapText="true"/>
+                </VBox>
+                <Button fx:id="reloadButton" text="إلغاء التغييرات" styleClass="btn, btn-secondary" onAction="#onReload"/>
+                <Button fx:id="saveButton" text="حفظ" styleClass="btn, btn-primary" onAction="#onSave">
+                    <graphic><Icon name="save"/></graphic>
+                </Button>
+            </HBox>
+
+            <!-- shown when leaving with unsaved changes -->
+            <HBox fx:id="leaveBar" spacing="10" alignment="CENTER_LEFT" styleClass="form-alert, form-alert-error"
+                  visible="false" managed="false">
+                <Label text="لديك تغييرات غير محفوظة في الإعدادات. ماذا تريد أن تفعل؟" wrapText="true" HBox.hgrow="ALWAYS"/>
+                <Button fx:id="leaveSaveButton" text="حفظ ثم المتابعة" styleClass="btn, btn-primary" onAction="#onLeaveSave"/>
+                <Button fx:id="leaveDiscardButton" text="تجاهل التغييرات" styleClass="btn, btn-danger" onAction="#onLeaveDiscard"/>
+                <Button fx:id="leaveStayButton" text="البقاء في الصفحة" styleClass="btn, btn-secondary" onAction="#onLeaveStay"/>
+            </HBox>
+
+            <Label fx:id="pageMessage" wrapText="true" maxWidth="Infinity" visible="false" managed="false"/>
+
+            <TabPane fx:id="tabs" styleClass="module-tabs" tabClosingPolicy="UNAVAILABLE">
+                <Tab fx:id="companyTab" text="بيانات الشركة">
+                    <VBox spacing="16" styleClass="tab-body">
+                        <VBox styleClass="card, form-card" spacing="12">
+                            <Label text="بيانات الشركة" styleClass="card-title"/>
+                            <GridPane hgap="18" vgap="10">
+                                <columnConstraints>
+                                    <ColumnConstraints percentWidth="50"/>
+                                    <ColumnConstraints percentWidth="50"/>
+                                </columnConstraints>
+                                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                                    <Label text="اسم الشركة بالعربي *" styleClass="field-label"/>
+                                    <TextField fx:id="nameArField"/>
+                                    <Label fx:id="nameArError"/>
+                                </VBox>
+                                <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                                    <Label text="اسم الشركة بالإنجليزي" styleClass="field-label"/>
+                                    <TextField fx:id="nameEnField"/>
+                                    <Label fx:id="nameEnError"/>
+                                </VBox>
+                                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                                    <Label text="الهاتف" styleClass="field-label"/>
+                                    <TextField fx:id="phoneField"/>
+                                    <Label fx:id="phoneError"/>
+                                </VBox>
+                                <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                                    <Label text="هاتف آخر" styleClass="field-label"/>
+                                    <TextField fx:id="phone2Field"/>
+                                    <Label fx:id="phone2Error"/>
+                                </VBox>
+                                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="2">
+                                    <Label text="البريد الإلكتروني" styleClass="field-label"/>
+                                    <TextField fx:id="emailField"/>
+                                    <Label fx:id="emailError"/>
+                                </VBox>
+                                <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                                    <Label text="العملة" styleClass="field-label"/>
+                                    <TextField fx:id="currencyField" editable="false" focusTraversable="false"/>
+                                    <Label text="ثابتة: الدينار الكويتي بثلاث منازل عشرية (لا تتغير من الإعدادات)." styleClass="muted" wrapText="true"/>
+                                </VBox>
+                                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="3">
+                                    <Label text="العنوان" styleClass="field-label"/>
+                                    <TextField fx:id="addressField"/>
+                                    <Label fx:id="addressError"/>
+                                </VBox>
+                                <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                                    <Label text="الدولة" styleClass="field-label"/>
+                                    <TextField fx:id="countryField"/>
+                                    <Label fx:id="countryError"/>
+                                </VBox>
+                                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="4">
+                                    <Label text="الرقم الضريبي (اختياري)" styleClass="field-label"/>
+                                    <TextField fx:id="taxField"/>
+                                    <Label fx:id="taxError"/>
+                                </VBox>
+                                <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="4">
+                                    <Label text="السجل التجاري (اختياري)" styleClass="field-label"/>
+                                    <TextField fx:id="crField"/>
+                                    <Label fx:id="crError"/>
+                                </VBox>
+                            </GridPane>
+                        </VBox>
+
+                        <VBox styleClass="card, form-card" spacing="12">
+                            <Label text="شعار الشركة" styleClass="card-title"/>
+                            <HBox spacing="16" alignment="CENTER_LEFT">
+                                <StackPane styleClass="logo-preview" minWidth="140" minHeight="90">
+                                    <ImageView fx:id="logoPreview" fitHeight="80" fitWidth="200" preserveRatio="true"/>
+                                    <Label fx:id="noLogoLabel" text="لا يوجد شعار" styleClass="muted"/>
+                                </StackPane>
+                                <VBox spacing="6" HBox.hgrow="ALWAYS">
+                                    <Label fx:id="logoInfoLabel" styleClass="muted" wrapText="true"/>
+                                    <Label text="PNG أو JPG، حتى 1 ميجابايت، من 16 إلى 4000 بكسل لكل ضلع. يُحفظ في قاعدة البيانات ويظهر في كل الأجهزة." styleClass="muted" wrapText="true"/>
+                                    <Label fx:id="logoError"/>
+                                    <HBox spacing="10">
+                                        <Button fx:id="changeLogoButton" text="تغيير الشعار" styleClass="btn, btn-secondary" onAction="#onChangeLogo"/>
+                                        <Button fx:id="removeLogoButton" text="إزالة الشعار" styleClass="btn, btn-danger" onAction="#onRemoveLogo"/>
+                                    </HBox>
+                                </VBox>
+                            </HBox>
+                        </VBox>
+                    </VBox>
+                </Tab>
+
+                <Tab fx:id="systemTab" text="إعدادات النظام">
+                    <VBox spacing="16" styleClass="tab-body">
+                        <VBox styleClass="card, form-card" spacing="12">
+                            <Label text="عروض الأسعار" styleClass="card-title"/>
+                            <VBox spacing="5" maxWidth="260">
+                                <Label text="مدة صلاحية العرض الافتراضية (أيام) *" styleClass="field-label"/>
+                                <TextField fx:id="validityField"/>
+                                <Label fx:id="validityError"/>
+                            </VBox>
+                            <VBox spacing="5">
+                                <Label text="الشروط الافتراضية لعرض السعر الجديد" styleClass="field-label"/>
+                                <TextArea fx:id="termsArea" prefRowCount="4" wrapText="true"/>
+                                <Label fx:id="termsError"/>
+                                <Label text="تُنسخ في العرض الجديد فقط؛ العروض المحفوظة تحتفظ بشروطها كما هي." styleClass="muted" wrapText="true"/>
+                            </VBox>
+                        </VBox>
+                        <VBox styleClass="card, form-card" spacing="12">
+                            <Label text="التذييلات المطبوعة" styleClass="card-title"/>
+                            <VBox spacing="5">
+                                <Label text="تذييل فاتورة البيع" styleClass="field-label"/>
+                                <TextArea fx:id="invoiceFooterArea" prefRowCount="2" wrapText="true"/>
+                                <Label fx:id="invoiceFooterError"/>
+                            </VBox>
+                            <VBox spacing="5">
+                                <Label text="تذييل التقارير المطبوعة" styleClass="field-label"/>
+                                <TextArea fx:id="reportFooterArea" prefRowCount="2" wrapText="true"/>
+                                <Label fx:id="reportFooterError"/>
+                            </VBox>
+                        </VBox>
+                    </VBox>
+                </Tab>
+
+                <Tab fx:id="aboutTab" text="حول البرنامج">
+                    <VBox spacing="16" styleClass="tab-body">
+                        <VBox styleClass="card" spacing="12">
+                            <Label text="حول البرنامج" styleClass="card-title"/>
+                            <GridPane fx:id="aboutGrid" hgap="24" vgap="10">
+                                <columnConstraints>
+                                    <ColumnConstraints minWidth="170"/>
+                                    <ColumnConstraints hgrow="ALWAYS"/>
+                                </columnConstraints>
+                            </GridPane>
+                            <HBox>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Button text="تحديث" styleClass="btn, btn-secondary" onAction="#onRefreshAbout">
+                                    <graphic><Icon name="refresh"/></graphic>
+                                </Button>
+                            </HBox>
+                        </VBox>
+                    </VBox>
+                </Tab>
+            </TabPane>
+        </VBox>
+    </ScrollPane>
+</StackPane>

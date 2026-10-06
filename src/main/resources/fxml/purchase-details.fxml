@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import com.almahwar.controller.support.Icon?>
+
+<!-- One purchase invoice: header, lines, totals and actions (post / edit / cancel draft / print). -->
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.almahwar.controller.PurchaseDetailsController"
+            fitToWidth="true" styleClass="content-scroll">
+    <VBox styleClass="page-content" spacing="16">
+
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <Button fx:id="backButton" text="رجوع" styleClass="btn, btn-secondary, btn-back" onAction="#onBack">
+                <graphic><Icon name="back"/></graphic>
+            </Button>
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label fx:id="numberLabel" styleClass="page-title"/>
+                    <HBox fx:id="badgesBox" spacing="6" alignment="CENTER_LEFT"/>
+                </HBox>
+                <Label fx:id="supplierLabel" styleClass="page-subtitle"/>
+            </VBox>
+            <Button fx:id="cancelButton" text="إلغاء المسودة" styleClass="btn, btn-danger" onAction="#onCancelDraft"/>
+            <Button fx:id="editButton" text="تعديل المسودة" styleClass="btn, btn-secondary" onAction="#onEdit"/>
+            <Button fx:id="returnButton" text="إنشاء مرتجع" styleClass="btn, btn-secondary" onAction="#onReturn"/>
+            <Button fx:id="printButton" text="معاينة وطباعة" styleClass="btn, btn-secondary" onAction="#onPrint">
+                <graphic><Icon name="print"/></graphic>
+            </Button>
+            <Button fx:id="postButton" text="اعتماد الفاتورة" styleClass="btn, btn-primary" onAction="#onPost"/>
+        </HBox>
+
+        <Label fx:id="pageMessage" wrapText="true" maxWidth="Infinity" visible="false" managed="false"/>
+
+        <VBox styleClass="card" spacing="12">
+            <Label text="بيانات الفاتورة" styleClass="card-title"/>
+            <GridPane fx:id="infoGrid" hgap="24" vgap="10">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="120"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                    <ColumnConstraints minWidth="120"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+            </GridPane>
+        </VBox>
+
+        <VBox styleClass="card" spacing="12">
+            <Label text="الأصناف" styleClass="card-title"/>
+            <TableView fx:id="itemsTable" prefHeight="280" minHeight="180">
+                <columns>
+                    <TableColumn fx:id="lineNoColumn" text="#" prefWidth="40" sortable="false"/>
+                    <TableColumn fx:id="codeColumn" text="الكود" prefWidth="90" sortable="false"/>
+                    <TableColumn fx:id="productColumn" text="الصنف" prefWidth="240" sortable="false"/>
+                    <TableColumn fx:id="quantityColumn" text="الكمية" prefWidth="90" sortable="false"/>
+                    <TableColumn fx:id="unitColumn" text="الوحدة" prefWidth="70" sortable="false"/>
+                    <TableColumn fx:id="costColumn" text="سعر الشراء" prefWidth="100" sortable="false"/>
+                    <TableColumn fx:id="discountColumn" text="الخصم" prefWidth="90" sortable="false"/>
+                    <TableColumn fx:id="lineTotalColumn" text="الإجمالي" prefWidth="110" sortable="false"/>
+                </columns>
+            </TableView>
+            <HBox fx:id="totalsBox" spacing="12" alignment="CENTER_LEFT">
+                <Region HBox.hgrow="ALWAYS"/>
+                <VBox styleClass="totals-card" spacing="6" minWidth="320">
+                    <HBox styleClass="total-row"><Label text="مجموع الأصناف"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="subtotalLabel" styleClass="total-value"/></HBox>
+                    <HBox styleClass="total-row"><Label text="خصم الفاتورة"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="discountLabel" styleClass="total-value"/></HBox>
+                    <HBox styleClass="total-row, total-main"><Label text="الإجمالي"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="totalLabel" styleClass="total-value"/></HBox>
+                    <HBox styleClass="total-row"><Label text="المدفوع"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="paidLabel" styleClass="total-value"/></HBox>
+                    <HBox styleClass="total-row"><Label text="المتبقي"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="remainingLabel" styleClass="total-value"/></HBox>
+                </VBox>
+            </HBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

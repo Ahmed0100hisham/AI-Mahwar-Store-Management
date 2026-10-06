@@ -6,7 +6,7 @@
 
     <groupId>com.almahwar</groupId>
     <artifactId>almahwar-store-management</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
     <packaging>jar</packaging>
 
     <name>Al Mahwar Store Management System</name>
@@ -23,6 +23,7 @@
 
         <main.class>com.almahwar.MainApp</main.class>
         <launcher.class>com.almahwar.Launcher</launcher.class>
+        <poi.version>5.2.5</poi.version>
     </properties>
 
     <dependencies>
@@ -45,6 +46,13 @@
             <version>${mssql.jdbc.version}</version>
         </dependency>
 
+        <!-- Excel (.xlsx) export of reports -->
+        <dependency>
+            <groupId>org.apache.poi</groupId>
+            <artifactId>poi-ooxml</artifactId>
+            <version>${poi.version}</version>
+        </dependency>
+
         <!-- Testing -->
         <dependency>
             <groupId>org.junit.jupiter</groupId>
@@ -55,6 +63,23 @@
     </dependencies>
 
     <build>
+        <!-- version.properties is filtered with the Maven project version: the program's single version source -->
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>false</filtering>
+                <excludes>
+                    <exclude>version.properties</exclude>
+                </excludes>
+            </resource>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+                <includes>
+                    <include>version.properties</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -94,7 +119,7 @@
                 </configuration>
             </plugin>
 
-            <!-- mvn package => target/almahwar-store-management-1.0.0-SNAPSHOT-app.jar (runnable fat jar) -->
+            <!-- mvn package => target/almahwar-store-management-${project.version}-app.jar (runnable fat jar) -->
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>

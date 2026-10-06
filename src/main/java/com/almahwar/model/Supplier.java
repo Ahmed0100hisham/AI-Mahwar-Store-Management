@@ -6,7 +6,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
-/** Table: Suppliers. {@code balance} is the amount the company owes the supplier. */
+/**
+ * Table: Suppliers. {@code balance} is the amount the company owes the supplier: a cache of
+ * {@code SUM(credit - debit)} in {@code Account_Ledger}, written only together with a ledger entry.
+ */
 public class Supplier {
 
     private Integer supplierId;
@@ -17,6 +20,7 @@ public class Supplier {
     private String phone2;
     private String email;
     private String country;
+    private String area;
     private String address;
     private BigDecimal openingBalance = MoneyUtil.ZERO;
     private BigDecimal balance = MoneyUtil.ZERO;
@@ -49,14 +53,19 @@ public class Supplier {
     public String getCountry() { return country; }
     public void setCountry(String country) { this.country = country; }
 
+    public String getArea() { return area; }
+    public void setArea(String area) { this.area = area; }
+
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
 
     public BigDecimal getOpeningBalance() { return openingBalance; }
-    public void setOpeningBalance(BigDecimal openingBalance) { this.openingBalance = MoneyUtil.of(openingBalance); }
+    /** {@code null} when hidden from a user without the balance permission. */
+    public void setOpeningBalance(BigDecimal openingBalance) { this.openingBalance = openingBalance == null ? null : MoneyUtil.of(openingBalance); }
 
     public BigDecimal getBalance() { return balance; }
-    public void setBalance(BigDecimal balance) { this.balance = MoneyUtil.of(balance); }
+    /** {@code null} when hidden from a user without the balance permission. */
+    public void setBalance(BigDecimal balance) { this.balance = balance == null ? null : MoneyUtil.of(balance); }
 
     public String getNotes() { return notes; }
     public void setNotes(String notes) { this.notes = notes; }

@@ -26,6 +26,7 @@ public class Product {
     private BigDecimal quantity = QuantityUtil.ZERO;
     private BigDecimal minimumStock = QuantityUtil.ZERO;
     private String location;
+    private String notes;
     private boolean active = true;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -65,8 +66,11 @@ public class Product {
     public String getColor() { return color; }
     public void setColor(String color) { this.color = color; }
 
+    /** {@code null} when hidden from a user who may not see purchase costs. */
     public BigDecimal getPurchasePrice() { return purchasePrice; }
-    public void setPurchasePrice(BigDecimal purchasePrice) { this.purchasePrice = MoneyUtil.of(purchasePrice); }
+    public void setPurchasePrice(BigDecimal purchasePrice) {
+        this.purchasePrice = purchasePrice == null ? null : MoneyUtil.of(purchasePrice);
+    }
 
     public BigDecimal getSalePrice() { return salePrice; }
     public void setSalePrice(BigDecimal salePrice) { this.salePrice = MoneyUtil.of(salePrice); }
@@ -82,6 +86,9 @@ public class Product {
 
     public String getLocation() { return location; }
     public void setLocation(String location) { this.location = location; }
+
+    public String getNotes() { return notes; }
+    public void setNotes(String notes) { this.notes = notes; }
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }

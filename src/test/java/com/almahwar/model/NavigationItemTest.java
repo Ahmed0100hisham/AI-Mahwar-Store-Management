@@ -22,8 +22,9 @@ class NavigationItemTest {
 
     @Test
     void menuIsInTheRequestedOrder() {
-        assertEquals(List.of("الرئيسية", "نقطة البيع", "المنتجات", "المخزون", "المشتريات", "العملاء", "الموردون",
-                        "عروض الأسعار", "المرتجعات", "الخزنة", "المصروفات", "التقارير", "المستخدمون", "الإعدادات"),
+        assertEquals(List.of("الرئيسية", "نقطة البيع", "المبيعات", "المنتجات", "المخزون", "المشتريات", "العملاء", "الموردون",
+                        "عروض الأسعار", "المرتجعات", "الخزنة", "المصروفات", "التقارير", "المستخدمون", "الإعدادات",
+                        "النسخ الاحتياطي"),
                 Arrays.stream(NavigationItem.values()).map(NavigationItem::getLabelAr).toList());
     }
 
@@ -34,17 +35,25 @@ class NavigationItemTest {
 
     @Test
     void cashierMenu() {
-        assertEquals(List.of(HOME, POINT_OF_SALE, CUSTOMERS, QUOTATIONS, RETURNS), menuFor(Role.CASHIER));
+        // read-only product lookup for selling; reports: the sales summary only
+        assertEquals(List.of(HOME, POINT_OF_SALE, SALES, PRODUCTS, CUSTOMERS, QUOTATIONS, RETURNS, REPORTS),
+                menuFor(Role.CASHIER));
     }
 
     @Test
     void storekeeperMenu() {
-        assertEquals(List.of(HOME, PRODUCTS, INVENTORY, PURCHASES, SUPPLIERS, RETURNS), menuFor(Role.STOREKEEPER));
+        // purchase returns move money / the supplier account: not the storekeeper's alone
+        // reports: stock reports only
+        assertEquals(List.of(HOME, PRODUCTS, INVENTORY, PURCHASES, SUPPLIERS, REPORTS), menuFor(Role.STOREKEEPER));
     }
 
     @Test
     void accountantMenu() {
-        assertEquals(List.of(HOME, CUSTOMERS, SUPPLIERS, CASH, EXPENSES, REPORTS), menuFor(Role.ACCOUNTANT));
+        // read-only products and costs; no inventory screen without an explicit permission
+        // sales list (with cost and profit) but no point of sale
+        assertEquals(List.of(HOME, SALES, PRODUCTS, PURCHASES, CUSTOMERS, SUPPLIERS, QUOTATIONS, RETURNS, CASH, EXPENSES,
+                        REPORTS),
+                menuFor(Role.ACCOUNTANT));
     }
 
     @Test

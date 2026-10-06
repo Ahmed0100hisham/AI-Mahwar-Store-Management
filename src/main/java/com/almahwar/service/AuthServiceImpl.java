@@ -2,6 +2,7 @@ package com.almahwar.service;
 
 import com.almahwar.dao.AuditLogDao;
 import com.almahwar.dao.RoleDao;
+import com.almahwar.dao.TransactionManager;
 import com.almahwar.dao.UserDao;
 import com.almahwar.model.Role;
 import com.almahwar.model.User;
@@ -108,8 +109,9 @@ public class AuthServiceImpl implements AuthService {
             }
             userDao.updateLastLogin(user.getUserId());
             user.setPasswordHash(null);   // never keep the hash in memory for the session
-            session.start(user);
-            audit(user.getUserId(), AuditLogDao.LOGIN, "تسجيل دخول - " + user.getRoleName());
+            session.start(user);          // without any permission while a password change is required
+            audit(user.getUserId(), AuditLogDao.LOGIN, "تسجيل دخول - " + user.getRoleName()
+                    + (user.isMustChangePassword() ? " (مطلوب تغيير كلمة المرور قبل المتابعة)" : ""));
             return session.requireSession();
         } finally {
             PasswordHasher.wipe(password);
@@ -122,6 +124,11 @@ public class AuthServiceImpl implements AuthService {
                 attemptTracker.getMaxAttempts(), (int) attemptTracker.getLockDuration().toSeconds());
         audit(user.getUserId(), AuditLogDao.LOGIN_FAILED, "كلمة مرور خاطئة: " + username
                 + (failure.locked() ? " - تم إيقاف الحساب مؤقتًا" : ""));
+        if (failure.locked()) {
+            audit(user.getUserId(), AuditLogDao.ACCOUNT_LOCKED, "Users", String.valueOf(user.getUserId()),
+                    "إيقاف مؤقت للحساب " + username + " لمدة " + failure.lockSecondsRemaining()
+                            + " ثانية بعد " + failure.failedAttempts() + " محاولات خاطئة");
+        }
         if (failure.locked()) {
             return lockedException(failure.lockSecondsRemaining());
         }
@@ -164,6 +171,47 @@ public class AuthServiceImpl implements AuthService {
         current.ifPresent(s -> audit(s.getUser().getUserId(), AuditLogDao.LOGOUT, reason.getDescription()));
     }
 
+    // ---------- Own password ----------
+
+    @Override
+    public void changePassword(char[] currentPassword, char[] newPassword, char[] confirmPassword) {
+        try {
+            UserSession current = session.requireSession();
+            int userId = current.getUser().getUserId();
+            User user = userDao.findById(userId)
+                    .orElseThrow(() -> new ValidationException("currentPassword", "الحساب غير موجود."));
+            if (currentPassword == null || currentPassword.length == 0) {
+                throw new ValidationException("currentPassword", "أدخل كلمة المرور الحالية.");
+            }
+            if (!PasswordHasher.verify(currentPassword, user.getPasswordHash())) {
+                audit(userId, AuditLogDao.LOGIN_FAILED, "Users", String.valueOf(userId),
+                        "كلمة المرور الحالية غير صحيحة عند محاولة تغيير كلمة المرور");
+                throw new ValidationException("currentPassword", "كلمة المرور الحالية غير صحيحة.");
+            }
+            try {
+                CredentialPolicy.validateNewPassword(newPassword, confirmPassword, user.getUsername());
+            } catch (IllegalArgumentException e) {
+                throw new ValidationException("newPassword", e.getMessage());
+            }
+            if (java.util.Arrays.equals(currentPassword, newPassword)) {
+                throw new ValidationException("newPassword", "كلمة المرور الجديدة يجب أن تختلف عن الحالية.");
+            }
+            String hash = PasswordHasher.hash(newPassword);
+            TransactionManager.inTransaction(con -> {
+                userDao.setPassword(con, userId, hash, false);
+                auditLogDao.log(con, userId, AuditLogDao.PASSWORD_CHANGED, "Users", String.valueOf(userId),
+                        "غيّر المستخدم " + user.getUsername() + " كلمة المرور الخاصة به");
+                return null;
+            });
+            // the session ends: the user logs in again with the new password
+            logout(LogoutReason.PASSWORD_CHANGED);
+        } finally {
+            PasswordHasher.wipe(currentPassword);
+            PasswordHasher.wipe(newPassword);
+            PasswordHasher.wipe(confirmPassword);
+        }
+    }
+
     // ---------- First run ----------
 
     /** {@code true} once at least one user exists; the login screen offers setup otherwise. */
@@ -188,18 +236,23 @@ public class AuthServiceImpl implements AuthService {
                 throw new IllegalArgumentException("أدخل الاسم الكامل.");
             }
             CredentialPolicy.validateUsername(username);
-            CredentialPolicy.validatePassword(password);
+            String name = CredentialPolicy.normalizeUsername(username);
+            CredentialPolicy.validateNewPassword(password, password, name);
 
             Role admin = roleDao.findByCode(Role.ADMIN)
                     .orElseThrow(() -> new IllegalStateException("دور مدير النظام غير موجود في قاعدة البيانات."));
             User user = new User();
             user.setFullName(fullName.trim());
-            user.setUsername(username.trim());
+            user.setUsername(name);
             user.setPasswordHash(PasswordHasher.hash(password));
             user.setRoleId(admin.getRoleId());
-            userDao.insert(user);
-            audit(user.getUserId(), AuditLogDao.INSERT, "Users", String.valueOf(user.getUserId()),
-                    "إنشاء حساب مدير النظام الأول");
+            // one statement checks "no user yet" and inserts: a second setup (or a concurrent one) creates nothing
+            Integer id = TransactionManager.inTransaction(con -> userDao.insertFirst(con, user).orElseThrow(
+                    () -> new IllegalStateException("تم إنشاء حساب المدير مسبقًا.")));
+            user.setUserId(id);
+            user.setPasswordHash(null);
+            audit(id, AuditLogDao.USER_CREATED, "Users", String.valueOf(id),
+                    "إنشاء حساب مدير النظام الأول: " + name);
             return user;
         } finally {
             PasswordHasher.wipe(password);

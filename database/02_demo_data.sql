@@ -90,7 +90,7 @@ JOIN dbo.Units u      ON u.name_ar = v.unit
 LEFT JOIN dbo.Brands b ON b.name_en = v.brand;
 
 INSERT INTO dbo.Stock_Movements (product_id, movement_date, movement_type, quantity, balance_after, unit_cost, notes, user_id)
-SELECT product_id, DATEADD(DAY, -31, SYSDATETIME()), 'OPENING', quantity, quantity, purchase_price, N'رصيد افتتاحي', @uid
+SELECT product_id, DATEADD(DAY, -31, SYSDATETIME()), 'OPENING_BALANCE', quantity, quantity, purchase_price, N'رصيد افتتاحي', @uid
 FROM dbo.Products WHERE quantity > 0;
 
 /* ---------- Customers & suppliers ---------- */
@@ -136,19 +136,20 @@ BEGIN
                            WHEN @r < 85 THEN 'CREDIT' ELSE 'KNET' END;
 
         IF @day = 0
-            SET @date = DATEADD(MINUTE, -(@k * 9 + 2), SYSDATETIME());   -- today's invoices: the last hour or so
+            SET @date = DATEADD(MINUTE, -((@n - 1 - @k) * 9 + 2), SYSDATETIME());   -- today's invoices: the last hour or so, numbers in time order
         ELSE
-            SET @date = DATEADD(MINUTE, 8 * 60 + ABS(CHECKSUM(NEWID())) % (13 * 60),
-                                CAST(DATEADD(DAY, -@day, @today) AS DATETIME2(0)));
+            SET @date = DATEADD(MINUTE, 8 * 60 + @k * (13 * 60 / @n) + ABS(CHECKSUM(NEWID())) % (13 * 60 / @n),
+                                CAST(DATEADD(DAY, -@day, @today) AS DATETIME2(0)));   -- 08:00-21:00, in number order
 
-        SET @invno = CONCAT(N'INV-', FORMAT(@date, 'yyMMdd'), N'-', FORMAT(@inv, '0000'));
-        INSERT INTO dbo.Sales (invoice_no, sale_date, customer_id, user_id, price_type, payment_method, created_at)
-        VALUES (@invno, @date, @cust, @uid, @pt, @method, @date);
+        SET @invno = CONCAT(N'SAL-', FORMAT(@inv, '000000'));   -- same numbering as the POS (oldest first)
+        INSERT INTO dbo.Sales (invoice_no, sale_date, customer_id, user_id, price_type, payment_method, status,
+                               posted_at, posted_by, created_at)
+        VALUES (@invno, @date, @cust, @uid, @pt, @method, 'POSTED', @date, @uid, @date);
         SET @sid = SCOPE_IDENTITY();
 
         -- 1..4 distinct products that have enough stock for the quantity picked
         SET @items = 1 + ABS(CHECKSUM(NEWID())) % 4;
-        INSERT INTO dbo.Sale_Items (sale_id, product_id, quantity, unit_price, purchase_price)
+        INSERT INTO dbo.Sale_Items (sale_id, product_id, quantity, unit_price, unit_cost)
         SELECT TOP (@items) @sid, p.product_id,
                CASE WHEN u.allows_decimal = 1 THEN CAST((2 + ABS(CHECKSUM(NEWID())) % 39) / 2.0 AS DECIMAL(18,3))
                     WHEN p.sale_price < 1 THEN 1 + ABS(CHECKSUM(NEWID())) % 20
@@ -167,7 +168,10 @@ BEGIN
         SET @total = @sub - @disc;
         SET @paid = CASE WHEN @method <> 'CREDIT' THEN @total
                          WHEN @r % 3 = 0 THEN ROUND(@total / 2, 3) ELSE 0 END;
-        UPDATE dbo.Sales SET subtotal = @sub, discount_amount = @disc, total_amount = @total, paid_amount = @paid
+        UPDATE dbo.Sales SET subtotal = @sub, discount_amount = @disc, total_amount = @total, paid_amount = @paid,
+               -- payment_method = how the paid part was paid (a part-paid credit sale was paid in cash)
+               payment_method = CASE WHEN @method = 'CREDIT' AND @paid > 0 THEN 'CASH' ELSE @method END,
+               cost_total = (SELECT SUM(CAST(quantity * unit_cost AS DECIMAL(18,3))) FROM dbo.Sale_Items WHERE sale_id = @sid)
         WHERE sale_id = @sid;
 
         UPDATE p SET p.quantity = p.quantity - si.quantity, p.updated_at = @date
@@ -176,7 +180,7 @@ BEGIN
 
         INSERT INTO dbo.Stock_Movements (product_id, movement_date, movement_type, quantity, balance_after, unit_cost,
                                          reference_type, reference_id, user_id)
-        SELECT si.product_id, @date, 'SALE', -si.quantity, p.quantity, si.purchase_price, 'SALE', @sid, @uid
+        SELECT si.product_id, @date, 'SALE', -si.quantity, p.quantity, si.unit_cost, 'SALE', @sid, @uid
         FROM dbo.Sale_Items si JOIN dbo.Products p ON p.product_id = si.product_id
         WHERE si.sale_id = @sid;
 
@@ -185,6 +189,18 @@ BEGIN
                                                source_type, source_id, description, user_id)
             VALUES (@date, 'IN', @paid, CASE WHEN @method = 'KNET' THEN 'KNET' ELSE 'CASH' END,
                     'SALE', @sid, CONCAT(N'فاتورة بيع ', @invno), @uid);
+
+        -- Named customers get the invoice on their account (the walk-in CASH customer has none)
+        IF @cust <> @cash
+        BEGIN
+            INSERT INTO dbo.Account_Ledger (party_type, customer_id, entry_date, entry_type, debit, credit,
+                                            reference_type, reference_id, reference_no, description, user_id, created_at)
+            VALUES ('CUSTOMER', @cust, @date, 'SALE', @total, 0, 'SALE', @sid, @invno, N'فاتورة بيع', @uid, @date);
+            IF @paid > 0
+                INSERT INTO dbo.Account_Ledger (party_type, customer_id, entry_date, entry_type, debit, credit,
+                                                reference_type, reference_id, reference_no, description, user_id, created_at)
+                VALUES ('CUSTOMER', @cust, @date, 'PAYMENT', 0, @paid, 'SALE', @sid, @invno, N'مدفوع مع الفاتورة', @uid, @date);
+        END
 
         IF @total > @paid
             UPDATE dbo.Customers SET balance = balance + (@total - @paid), updated_at = @date WHERE customer_id = @cust;
@@ -205,9 +221,10 @@ BEGIN
     FROM @purchases p JOIN dbo.Suppliers s ON s.supplier_code = p.supplier WHERE p.no = @pno;
     SET @date = DATEADD(HOUR, 10, CAST(DATEADD(DAY, -@day, @today) AS DATETIME2(0)));
 
-    INSERT INTO dbo.Purchases (purchase_no, supplier_invoice_no, purchase_date, supplier_id, user_id, payment_method, created_at)
+    INSERT INTO dbo.Purchases (purchase_no, supplier_invoice_no, purchase_date, supplier_id, user_id, payment_method,
+                               status, posted_at, posted_by, created_at)
     VALUES (CONCAT(N'PUR-', FORMAT(@date, 'yyMMdd'), N'-', @pno), CONCAT(N'SUP-', 7000 + @pno), @date, @supplier, @uid,
-            CASE WHEN @r = 100 THEN 'BANK_TRANSFER' ELSE 'CREDIT' END, @date);
+            CASE WHEN @r = 0 THEN 'CREDIT' ELSE 'BANK_TRANSFER' END, 'POSTED', @date, @uid, @date);
     SET @pid = SCOPE_IDENTITY();
 
     INSERT INTO dbo.Purchase_Items (purchase_id, product_id, quantity, unit_cost)
@@ -234,6 +251,15 @@ BEGIN
         INSERT INTO dbo.Cash_Transactions (transaction_date, transaction_type, amount, payment_method,
                                            source_type, source_id, description, user_id)
         VALUES (@date, 'OUT', @paid, 'BANK_TRANSFER', 'PURCHASE', @pid, N'سداد فاتورة مشتريات', @uid);
+    INSERT INTO dbo.Account_Ledger (party_type, supplier_id, entry_date, entry_type, debit, credit,
+                                    reference_type, reference_id, reference_no, description, user_id, created_at)
+    SELECT 'SUPPLIER', @supplier, @date, 'PURCHASE', 0, @total, 'PURCHASE', @pid, purchase_no, N'فاتورة مشتريات', @uid, @date
+    FROM dbo.Purchases WHERE purchase_id = @pid;
+    IF @paid > 0
+        INSERT INTO dbo.Account_Ledger (party_type, supplier_id, entry_date, entry_type, debit, credit,
+                                        reference_type, reference_id, reference_no, description, user_id, created_at)
+        SELECT 'SUPPLIER', @supplier, @date, 'PAYMENT', @paid, 0, 'PURCHASE', @pid, purchase_no, N'سداد مع الفاتورة', @uid, @date
+        FROM dbo.Purchases WHERE purchase_id = @pid;
     IF @total > @paid
         UPDATE dbo.Suppliers SET balance = balance + (@total - @paid), updated_at = @date WHERE supplier_id = @supplier;
 
@@ -255,54 +281,71 @@ IF @siid IS NOT NULL
 BEGIN
     SET @date = DATEADD(HOUR, 12, CAST(DATEADD(DAY, -1, @today) AS DATETIME2(0)));
     INSERT INTO dbo.Sale_Returns (return_no, sale_id, customer_id, return_date, total_amount, refund_amount,
-                                  refund_method, reason, user_id, created_at)
-    VALUES (CONCAT(N'RET-', FORMAT(@date, 'yyMMdd'), N'-1'), @rsale, @rcust, @date, @rprice, @rprice, 'CASH',
-            N'عيب مصنعي', @uid, @date);
+                                  refund_method, cost_total, reason_code, reason, user_id, created_at)
+    SELECT N'SRN-000001', @rsale, @rcust, @date, @rprice, @rprice, 'CASH', unit_cost, 'DEFECTIVE', N'عيب في المنتج',
+           @uid, @date
+    FROM dbo.Sale_Items WHERE sale_item_id = @siid;   -- same numbering as the app
     SET @retid = SCOPE_IDENTITY();
-    INSERT INTO dbo.Sale_Return_Items (return_id, sale_item_id, product_id, quantity, unit_price)
-    VALUES (@retid, @siid, @rprod, @rqty, @rprice);
+    INSERT INTO dbo.Sale_Return_Items (return_id, sale_item_id, product_id, quantity, unit_price, unit_cost)
+    SELECT @retid, @siid, @rprod, @rqty, @rprice, unit_cost FROM dbo.Sale_Items WHERE sale_item_id = @siid;
     UPDATE dbo.Products SET quantity = quantity + @rqty, updated_at = @date WHERE product_id = @rprod;
     INSERT INTO dbo.Stock_Movements (product_id, movement_date, movement_type, quantity, balance_after, unit_cost,
                                      reference_type, reference_id, user_id)
-    SELECT @rprod, @date, 'SALE_RETURN', @rqty, quantity, purchase_price, 'SALE_RETURN', @retid, @uid
-    FROM dbo.Products WHERE product_id = @rprod;
+    SELECT @rprod, @date, 'SALE_RETURN', @rqty, p.quantity, si.unit_cost, 'SALE_RETURN', @retid, @uid
+    FROM dbo.Products p JOIN dbo.Sale_Items si ON si.sale_item_id = @siid WHERE p.product_id = @rprod;
     INSERT INTO dbo.Cash_Transactions (transaction_date, transaction_type, amount, payment_method,
                                        source_type, source_id, description, user_id)
     VALUES (@date, 'OUT', @rprice, 'CASH', 'SALE_RETURN', @retid, N'مرتجع مبيعات', @uid);
+    -- A named customer's account shows the return and the cash refund (net zero)
+    IF @rcust <> @cash
+        INSERT INTO dbo.Account_Ledger (party_type, customer_id, entry_date, entry_type, debit, credit,
+                                        reference_type, reference_id, reference_no, description, user_id, created_at)
+        SELECT 'CUSTOMER', @rcust, @date, v.t, v.d, v.c, 'SALE_RETURN', @retid, return_no, v.descr, @uid, @date
+        FROM dbo.Sale_Returns
+        CROSS JOIN (VALUES ('SALE_RETURN', 0, @rprice, N'مرتجع مبيعات'),
+                           ('PAYMENT', @rprice, 0, N'رد المبلغ نقدًا')) v (t, d, c, descr)
+        WHERE return_id = @retid;
 END
 
 /* ---------- Customer payments (40% of each open balance, 3 days ago) ---------- */
 SET @date = DATEADD(HOUR, 11, CAST(DATEADD(DAY, -3, @today) AS DATETIME2(0)));
 INSERT INTO dbo.Customer_Payments (payment_no, customer_id, payment_date, amount, payment_method, user_id, notes, created_at)
-SELECT CONCAT(N'RCV-', FORMAT(@date, 'yyMMdd'), N'-', ROW_NUMBER() OVER (ORDER BY customer_id)),
+SELECT CONCAT(N'RCV-', FORMAT(ROW_NUMBER() OVER (ORDER BY customer_id), '000000')),   -- same numbering as the app
        customer_id, @date, ROUND(balance * 0.4, 3), 'CASH', @uid, N'دفعة من الحساب', @date
 FROM dbo.Customers WHERE balance > 10;
 
 INSERT INTO dbo.Cash_Transactions (transaction_date, transaction_type, amount, payment_method, source_type, source_id, description, user_id)
-SELECT @date, 'IN', amount, 'CASH', 'CUSTOMER_PAYMENT', payment_id, N'تحصيل من عميل', @uid
+SELECT @date, 'IN', amount, 'CASH', 'CUSTOMER_PAYMENT', payment_id, CONCAT(N'تحصيل من عميل - سند ', payment_no), @uid
+FROM dbo.Customer_Payments;
+
+INSERT INTO dbo.Account_Ledger (party_type, customer_id, entry_date, entry_type, debit, credit,
+                                reference_type, reference_id, reference_no, description, user_id, created_at)
+SELECT 'CUSTOMER', customer_id, @date, 'PAYMENT', 0, amount, 'CUSTOMER_PAYMENT', payment_id, payment_no,
+       N'سند قبض', @uid, @date
 FROM dbo.Customer_Payments;
 
 UPDATE c SET c.balance = c.balance - cp.amount, c.updated_at = @date
 FROM dbo.Customers c JOIN dbo.Customer_Payments cp ON cp.customer_id = c.customer_id;
 
 /* ---------- Expenses ---------- */
-INSERT INTO dbo.Expenses (expense_no, expense_date, expense_type, amount, payment_method, description, user_id)
-SELECT CONCAT(N'EXP-', FORMAT(ROW_NUMBER() OVER (ORDER BY v.days_ago DESC), '000')),
+INSERT INTO dbo.Expenses (expense_no, expense_date, expense_type, category, amount, payment_method, description, user_id)
+SELECT CONCAT(N'EXP-', FORMAT(ROW_NUMBER() OVER (ORDER BY v.days_ago DESC), '000000')),   -- same numbering as the app
        DATEADD(HOUR, 13, CAST(DATEADD(DAY, -v.days_ago, @today) AS DATETIME2(0))),
-       v.kind, v.amount, v.method, v.descr, @uid
+       v.kind, v.category, v.amount, v.method, v.descr, @uid
 FROM (VALUES
-    (28, N'إيجار',          450.000, 'BANK_TRANSFER', N'إيجار المحل'),
-    (25, N'رواتب',         1200.000, 'BANK_TRANSFER', N'رواتب الموظفين'),
-    (21, N'نقل وتوصيل',      12.500, 'CASH',          N'توصيل طلبية مقاول'),
-    (15, N'كهرباء وماء',     35.750, 'CASH',          N'فاتورة الكهرباء والماء'),
-    (11, N'نقل وتوصيل',       8.000, 'CASH',          N'توصيل'),
-    (4,  N'صيانة',           18.000, 'CASH',          N'صيانة مكيف المعرض'),
-    (2,  N'نقل وتوصيل',      15.250, 'CASH',          N'توصيل طلبية الجهراء'),
-    (0,  N'ضيافة',            3.500, 'CASH',          N'ضيافة')
-) AS v (days_ago, kind, amount, method, descr);
+    (28, N'إيجار',     'RENT',        450.000, 'BANK_TRANSFER', N'إيجار المحل'),
+    (25, N'رواتب',     'SALARIES',   1200.000, 'BANK_TRANSFER', N'رواتب الموظفين'),
+    (21, N'نقل وتوصيل', 'TRANSPORT',    12.500, 'CASH',          N'توصيل طلبية مقاول'),
+    (15, N'كهرباء',    'ELECTRICITY',  35.750, 'CASH',          N'فاتورة الكهرباء والماء'),
+    (11, N'نقل وتوصيل', 'TRANSPORT',     8.000, 'CASH',          N'توصيل'),
+    (4,  N'صيانة',     'MAINTENANCE',  18.000, 'CASH',          N'صيانة مكيف المعرض'),
+    (2,  N'نقل وتوصيل', 'TRANSPORT',    15.250, 'CASH',          N'توصيل طلبية الجهراء'),
+    (0,  N'أخرى',      'OTHER',         3.500, 'CASH',          N'ضيافة')
+) AS v (days_ago, kind, category, amount, method, descr);
 
 INSERT INTO dbo.Cash_Transactions (transaction_date, transaction_type, amount, payment_method, source_type, source_id, description, user_id)
-SELECT expense_date, 'OUT', amount, payment_method, 'EXPENSE', expense_id, description, @uid FROM dbo.Expenses;
+SELECT expense_date, 'OUT', amount, payment_method, 'EXPENSE', expense_id, CONCAT(N'مصروف ', expense_no, N' - ', description), @uid
+FROM dbo.Expenses;
 
 COMMIT TRANSACTION;
 

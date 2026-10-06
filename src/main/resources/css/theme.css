@@ -1,0 +1,99 @@
+/* ==========================================================
+   Al Mahwar — design tokens (theme)
+   Colours are looked-up colours on .root: change the theme here only.
+   Spacing scale used by every layout: 4 / 8 / 12 / 16 / 24 / 32 px.
+   Radius scale: 6 (small controls, badges), 8 (inputs, buttons), 12 (cards), 16 (login card).
+   Typography (Segoe UI — installed on every Windows 10/11 PC, with Arabic glyphs; Tahoma / Arial fallback):
+     page title 22 · section / card title 15.5 · KPI value 22 · body 14 · table / form 13.5 ·
+     caption 12 · badge 11.5
+   ========================================================== */
+.root {
+    /* Brand: deep navy */
+    -color-primary: #0E4C8A;
+    -color-primary-dark: #0A3866;
+    -color-primary-light: #EAF1FA;
+    -color-primary-soft: #D3E2F4;
+    /* Secondary accent (charts, highlights only) */
+    -color-accent: #0F8B8D;
+
+    /* Semantic colours: green = success only, amber = warning, red = danger only */
+    -color-success: #1E8A52;
+    -color-success-bg: #E7F5EC;
+    -color-success-text: #17663D;
+    -color-warning: #C98A0B;
+    -color-warning-bg: #FDF4DE;
+    -color-warning-text: #7A5300;
+    -color-danger: #C63D3D;
+    -color-danger-bg: #FCEBEB;
+    -color-danger-text: #8E2A2A;
+    -color-info: #2F6FB5;
+    -color-info-bg: #E6EFFA;
+    -color-info-text: #1D4F86;
+
+    /* Neutrals */
+    -color-bg: #F3F5F8;
+    -color-surface: #FFFFFF;
+    -color-surface-alt: #F8FAFC;
+    -color-border: #E1E6ED;
+    -color-border-strong: #C9D2DD;
+    -color-text: #18212F;
+    -color-text-secondary: #3E4A5C;
+    -color-text-muted: #687384;
+    -color-text-faint: #98A2B3;
+
+    /* Application shell */
+    -color-sidebar: #0D2440;
+    -color-sidebar-hover: #15345A;
+    -color-sidebar-active: #1B4677;
+    -color-sidebar-text: #C6D3E3;
+    -color-sidebar-section: #7088A6;
+
+    -fx-font-family: "Segoe UI", "Tahoma", "Arial";
+    -fx-font-size: 14px;
+    -fx-text-fill: -color-text;
+    -fx-background-color: -color-bg;
+
+    -fx-accent: -color-primary;
+    -fx-focus-color: -color-primary;
+    -fx-faint-focus-color: rgba(14, 76, 138, 0.16);
+    -fx-selection-bar: -color-primary;
+    -fx-selection-bar-non-focused: -color-primary-soft;
+}
+
+/* ---------- Typography ---------- */
+.label {
+    -fx-text-fill: -color-text;
+}
+
+.page-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-text;
+}
+
+.page-subtitle {
+    -fx-font-size: 13px;
+    -fx-text-fill: -color-text-muted;
+}
+
+.card-title,
+.section-title {
+    -fx-font-size: 15.5px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-text;
+}
+
+.muted {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 12.5px;
+}
+
+.caption {
+    -fx-text-fill: -color-text-faint;
+    -fx-font-size: 12px;
+}
+
+/* Monetary values (KWD, 3 decimals) */
+.money {
+    -fx-text-fill: -color-primary-dark;
+}

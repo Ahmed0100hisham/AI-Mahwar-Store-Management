@@ -34,29 +34,32 @@ public class DashboardDao extends BaseDao {
             SELECT
               d.today AS server_today,
               (SELECT COALESCE(SUM(total_amount), 0) FROM dbo.Sales
-                 WHERE status = 'COMPLETED' AND sale_date >= d.today AND sale_date < DATEADD(DAY, 1, d.today))
+                 WHERE status = 'POSTED' AND sale_date >= d.today AND sale_date < DATEADD(DAY, 1, d.today))
                 AS today_sales,
+              (SELECT COALESCE(SUM(total_amount), 0) FROM dbo.Sale_Returns
+                 WHERE return_date >= d.today AND return_date < DATEADD(DAY, 1, d.today))
+                AS today_returns,
               (SELECT COALESCE(SUM(total_amount), 0) FROM dbo.Sales
-                 WHERE status = 'COMPLETED' AND sale_date >= DATEADD(DAY, -1, d.today) AND sale_date < d.today)
+                 WHERE status = 'POSTED' AND sale_date >= DATEADD(DAY, -1, d.today) AND sale_date < d.today)
                 AS yesterday_sales,
+              (SELECT COALESCE(SUM(total_amount), 0) FROM dbo.Sale_Returns
+                 WHERE return_date >= DATEADD(DAY, -1, d.today) AND return_date < d.today)
+                AS yesterday_returns,
               (SELECT COUNT(*) FROM dbo.Sales
-                 WHERE status = 'COMPLETED' AND sale_date >= d.today AND sale_date < DATEADD(DAY, 1, d.today))
+                 WHERE status = 'POSTED' AND sale_date >= d.today AND sale_date < DATEADD(DAY, 1, d.today))
                 AS today_invoices,
               (SELECT COALESCE(SUM(total_amount), 0) FROM dbo.Sales
-                 WHERE status = 'COMPLETED' AND sale_date >= d.month_start AND sale_date < DATEADD(MONTH, 1, d.month_start))
+                 WHERE status = 'POSTED' AND sale_date >= d.month_start AND sale_date < DATEADD(MONTH, 1, d.month_start))
                 AS month_sales,
-              -- margin per line (line_total already net of line discounts, cost saved at time of sale)
-              (SELECT COALESCE(SUM(si.line_total - si.quantity * si.purchase_price), 0)
-                 FROM dbo.Sale_Items si JOIN dbo.Sales s ON s.sale_id = si.sale_id
-                 WHERE s.status = 'COMPLETED' AND s.sale_date >= d.month_start AND s.sale_date < DATEADD(MONTH, 1, d.month_start))
-              -- invoice-level discounts
-              - (SELECT COALESCE(SUM(discount_amount), 0) FROM dbo.Sales
-                 WHERE status = 'COMPLETED' AND sale_date >= d.month_start AND sale_date < DATEADD(MONTH, 1, d.month_start))
-              -- returned goods: revenue given back minus the cost that comes back into stock
-              - (SELECT COALESCE(SUM(ri.line_total - ri.quantity * si.purchase_price), 0)
-                 FROM dbo.Sale_Return_Items ri
-                 JOIN dbo.Sale_Returns r ON r.return_id = ri.return_id
-                 JOIN dbo.Sale_Items si ON si.sale_item_id = ri.sale_item_id
+              (SELECT COALESCE(SUM(total_amount), 0) FROM dbo.Sale_Returns
+                 WHERE return_date >= d.month_start AND return_date < DATEADD(MONTH, 1, d.month_start))
+                AS month_returns,
+              -- gross profit of posted sales: total (after line and invoice discounts) − historical cost total
+              (SELECT COALESCE(SUM(gross_profit), 0) FROM dbo.Sales
+                 WHERE status = 'POSTED' AND sale_date >= d.month_start AND sale_date < DATEADD(MONTH, 1, d.month_start))
+              -- returned goods: the value given back minus the historical cost that comes back into stock
+              - (SELECT COALESCE(SUM(r.total_amount - r.cost_total), 0)
+                 FROM dbo.Sale_Returns r
                  WHERE r.return_date >= d.month_start AND r.return_date < DATEADD(MONTH, 1, d.month_start))
                 AS month_gross_profit,
               (SELECT COALESCE(SUM(amount), 0) FROM dbo.Expenses
@@ -75,9 +78,12 @@ public class DashboardDao extends BaseDao {
         return queryOne(STATS_SQL, rs -> new DashboardStats(
                 rs.getObject("server_today", LocalDate.class),
                 MoneyUtil.of(rs.getBigDecimal("today_sales")),
+                MoneyUtil.of(rs.getBigDecimal("today_returns")),
                 MoneyUtil.of(rs.getBigDecimal("yesterday_sales")),
+                MoneyUtil.of(rs.getBigDecimal("yesterday_returns")),
                 rs.getLong("today_invoices"),
                 MoneyUtil.of(rs.getBigDecimal("month_sales")),
+                MoneyUtil.of(rs.getBigDecimal("month_returns")),
                 MoneyUtil.of(rs.getBigDecimal("month_gross_profit")),
                 MoneyUtil.of(rs.getBigDecimal("month_expenses")),
                 MoneyUtil.of(rs.getBigDecimal("cash_balance")),
@@ -110,6 +116,7 @@ public class DashboardDao extends BaseDao {
                        s.remaining_amount, s.payment_method, s.status
                 FROM dbo.Sales s
                 JOIN dbo.Customers c ON c.customer_id = s.customer_id
+                WHERE s.status = 'POSTED'
                 ORDER BY s.sale_date DESC, s.sale_id DESC
                 """, rs -> new RecentInvoice(
                         rs.getString("invoice_no"),
@@ -132,7 +139,7 @@ public class DashboardDao extends BaseDao {
                 JOIN dbo.Sale_Items si ON si.sale_id = s.sale_id
                 JOIN dbo.Products p ON p.product_id = si.product_id
                 JOIN dbo.Units u ON u.unit_id = p.unit_id
-                WHERE s.status = 'COMPLETED'
+                WHERE s.status = 'POSTED'
                 GROUP BY p.product_id, p.product_code, p.name_ar, u.name_ar
                 ORDER BY sales_amount DESC
                 """, rs -> new TopProduct(
@@ -155,7 +162,7 @@ public class DashboardDao extends BaseDao {
                 SELECT CAST(s.sale_date AS date) AS period, SUM(s.total_amount) AS total, COUNT(*) AS invoices
                 FROM d
                 JOIN dbo.Sales s ON s.sale_date >= DATEADD(DAY, 1 - ?, d.today) AND s.sale_date < DATEADD(DAY, 1, d.today)
-                WHERE s.status = 'COMPLETED'
+                WHERE s.status = 'POSTED'
                 GROUP BY CAST(s.sale_date AS date)
                 """, DashboardDao::mapPoint, days);
     }
@@ -168,7 +175,7 @@ public class DashboardDao extends BaseDao {
                 FROM d
                 JOIN dbo.Sales s ON s.sale_date >= DATEADD(MONTH, 1 - ?, d.month_start)
                                 AND s.sale_date < DATEADD(MONTH, 1, d.month_start)
-                WHERE s.status = 'COMPLETED'
+                WHERE s.status = 'POSTED'
                 GROUP BY DATEFROMPARTS(YEAR(s.sale_date), MONTH(s.sale_date), 1)
                 """, DashboardDao::mapPoint, months);
     }

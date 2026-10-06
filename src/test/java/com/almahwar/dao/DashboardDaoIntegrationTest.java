@@ -91,14 +91,14 @@ class DashboardDaoIntegrationTest {
         supplierId = new SupplierDao().insert(s);
 
         // Sale now: 2 × 10.000 − line discount 1.000 = 19.000; invoice discount 0.500 => total 18.500
-        // margin = 19.000 − 2 × 6.000 = 7.000; paid 10.000 => 8.500 owed by the customer
+        // cost = 2 × 6.000 = 12.000 => gross profit 6.500; paid 10.000 => 8.500 owed by the customer
         saleId = sql.insert("""
                 INSERT INTO dbo.Sales (invoice_no, sale_date, customer_id, user_id, payment_method,
-                                       subtotal, discount_amount, total_amount, paid_amount)
-                VALUES (?, SYSDATETIME(), ?, ?, 'CREDIT', 19.000, 0.500, 18.500, 10.000)
+                                       subtotal, discount_amount, total_amount, paid_amount, cost_total, status)
+                VALUES (?, SYSDATETIME(), ?, ?, 'CASH', 19.000, 0.500, 18.500, 10.000, 12.000, 'POSTED')
                 """, tag, customerId, userId);
         int saleItemId = sql.insert("""
-                INSERT INTO dbo.Sale_Items (sale_id, product_id, quantity, unit_price, purchase_price, discount_amount)
+                INSERT INTO dbo.Sale_Items (sale_id, product_id, quantity, unit_price, unit_cost, discount_amount)
                 VALUES (?, ?, 2, 10.000, 6.000, 1.000)
                 """, saleId, productId);
         sql.update("UPDATE dbo.Customers SET balance = balance + 8.500 WHERE customer_id = ?", customerId);
@@ -110,12 +110,13 @@ class DashboardDaoIntegrationTest {
 
         // Return 1 unit today: revenue 10.000 back, cost 6.000 back into stock => profit −4.000
         int returnId = sql.insert("""
-                INSERT INTO dbo.Sale_Returns (return_no, sale_id, customer_id, total_amount, refund_amount, user_id)
-                VALUES (?, ?, ?, 10.000, 0, ?)
+                INSERT INTO dbo.Sale_Returns (return_no, sale_id, customer_id, total_amount, refund_amount, refund_method,
+                                              cost_total, user_id)
+                VALUES (?, ?, ?, 10.000, 0, 'CREDIT', 6.000, ?)
                 """, tag, saleId, customerId, userId);
         sql.update("""
-                INSERT INTO dbo.Sale_Return_Items (return_id, sale_item_id, product_id, quantity, unit_price)
-                VALUES (?, ?, ?, 1, 10.000)
+                INSERT INTO dbo.Sale_Return_Items (return_id, sale_item_id, product_id, quantity, unit_price, unit_cost)
+                VALUES (?, ?, ?, 1, 10.000, 6.000)
                 """, returnId, saleItemId, productId);
 
         // Expense today 2.000, paid from the cash box
@@ -135,7 +136,7 @@ class DashboardDaoIntegrationTest {
         assertEquals(1, after.todayInvoices() - before.todayInvoices(), "today invoices");
         assertEquals(kwd("18.500"), after.monthSales().subtract(before.monthSales()), "month sales");
         assertEquals(kwd("2.500"), after.monthGrossProfit().subtract(before.monthGrossProfit()),
-                "gross profit = 7.000 margin − 0.500 invoice discount − 4.000 return");
+                "gross profit = 18.500 total − 12.000 historical cost − 4.000 return");
         assertEquals(kwd("2.000"), after.monthExpenses().subtract(before.monthExpenses()), "expenses");
         assertEquals(kwd("0.500"), after.monthNetProfit().subtract(before.monthNetProfit()), "net profit");
         assertEquals(kwd("8.000"), after.cashBalance().subtract(before.cashBalance()), "cash +10 −2");

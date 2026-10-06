@@ -39,6 +39,26 @@ public interface SecurityContext {
         return getSession().map(s -> s.hasPermission(permission)).orElse(false);
     }
 
+    default boolean hasAnyPermission(Permission... permissions) {
+        for (Permission p : permissions) {
+            if (hasPermission(p)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** @throws AccessDeniedException unless the current user holds at least one of the permissions */
+    default void requireAnyPermission(Permission... permissions) {
+        UserSession session = requireSession();
+        for (Permission p : permissions) {
+            if (session.hasPermission(p)) {
+                return;
+            }
+        }
+        throw new AccessDeniedException("ليس لديك صلاحية الوصول إلى: " + permissions[0].getLabelAr());
+    }
+
     /** @throws AccessDeniedException if the current user lacks the permission */
     default void requirePermission(Permission permission) {
         if (!requireSession().hasPermission(permission)) {

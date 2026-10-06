@@ -28,7 +28,9 @@ public final class SessionManager implements SecurityContext {
     }
 
     void start(User user) {
-        current = new UserSession(user, RolePermissions.forRole(user.getRoleCode()), LocalDateTime.now());
+        // a user who must change the password first gets a session without any permission
+        current = new UserSession(user, RolePermissions.forRole(user.getRoleCode()), LocalDateTime.now(),
+                user.isMustChangePassword());
     }
 
     void end() {

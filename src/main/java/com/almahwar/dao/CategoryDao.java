@@ -26,6 +26,18 @@ public class CategoryDao extends BaseDao {
         return queryList(SELECT + " WHERE c.is_active = 1 ORDER BY c.name_ar", CategoryDao::map);
     }
 
+    /** Arabic/English name contains {@code text}; {@code null} or blank text matches all. */
+    public List<Category> search(String text, boolean activeOnly) {
+        String like = text == null || text.isBlank() ? "%" : likeContains(text);
+        return queryList(SELECT + " WHERE (c.name_ar LIKE ? OR c.name_en LIKE ?)"
+                + (activeOnly ? " AND c.is_active = 1" : "") + " ORDER BY c.name_ar", CategoryDao::map, like, like);
+    }
+
+    public boolean existsByName(String nameAr, Integer excludeId) {
+        return queryLong("SELECT COUNT(*) FROM dbo.Categories WHERE name_ar = ? AND category_id <> ?",
+                nameAr.trim(), excludeId == null ? 0 : excludeId) > 0;
+    }
+
     public Optional<Category> findById(int categoryId) {
         return queryOne(SELECT + " WHERE c.category_id = ?", CategoryDao::map, categoryId);
     }

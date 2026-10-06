@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import com.almahwar.controller.support.Icon?>
+
+<!-- Products module: list + categories/brands/units tabs. The add/edit form opens in place (product-form.fxml). -->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="pageHost" fx:controller="com.almahwar.controller.ProductsController" styleClass="module-root">
+
+    <VBox fx:id="listPage" styleClass="page-content" spacing="16">
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="المنتجات" styleClass="page-title"/>
+                <Label fx:id="subtitleLabel" styleClass="page-subtitle" wrapText="true"/>
+            </VBox>
+            <Button fx:id="addButton" text="إضافة منتج" styleClass="btn, btn-primary" onAction="#onAdd">
+                <graphic><Icon name="plus"/></graphic>
+            </Button>
+        </HBox>
+
+        <Label fx:id="listMessage" wrapText="true" maxWidth="Infinity" visible="false" managed="false"/>
+
+        <TabPane fx:id="tabs" styleClass="module-tabs" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+            <Tab text="المنتجات">
+                <VBox spacing="12" styleClass="card, module-card">
+                    <!-- Search & filters -->
+                    <HBox styleClass="filter-bar" spacing="10" alignment="CENTER_LEFT">
+                        <TextField fx:id="searchField" promptText="بحث بالاسم أو الكود أو الباركود"
+                                   HBox.hgrow="ALWAYS" prefWidth="240" minWidth="150" maxWidth="380"/>
+                        <ComboBox fx:id="categoryFilter" promptText="كل الأقسام" prefWidth="150" minWidth="120"/>
+                        <ComboBox fx:id="brandFilter" promptText="كل الماركات" prefWidth="145" minWidth="120"/>
+                        <ComboBox fx:id="unitFilter" promptText="كل الوحدات" prefWidth="140" minWidth="125"/>
+                        <ComboBox fx:id="statusFilter" prefWidth="110" minWidth="100"/>
+                        <CheckBox fx:id="lowStockFilter" text="منخفض المخزون فقط" minWidth="-Infinity"/>
+                        <Region HBox.hgrow="SOMETIMES"/>
+                        <Button text="مسح الفلاتر" styleClass="btn, btn-secondary" minWidth="-Infinity"
+                                onAction="#onClearFilters">
+                            <graphic><Icon name="filter-off"/></graphic>
+                        </Button>
+                    </HBox>
+
+                    <TableView fx:id="productsTable" VBox.vgrow="ALWAYS" prefHeight="520">
+                        <columns>
+                            <TableColumn fx:id="codeColumn" text="الكود" prefWidth="90"/>
+                            <TableColumn fx:id="barcodeColumn" text="الباركود" prefWidth="120"/>
+                            <TableColumn fx:id="nameColumn" text="اسم المنتج" prefWidth="230"/>
+                            <TableColumn fx:id="categoryColumn" text="القسم" prefWidth="110"/>
+                            <TableColumn fx:id="brandColumn" text="الماركة" prefWidth="100"/>
+                            <TableColumn fx:id="unitColumn" text="الوحدة" prefWidth="70"/>
+                            <TableColumn fx:id="priceColumn" text="سعر البيع" prefWidth="90"/>
+                            <TableColumn fx:id="quantityColumn" text="الكمية" prefWidth="80"/>
+                            <TableColumn fx:id="minimumColumn" text="الحد الأدنى" prefWidth="80"/>
+                            <TableColumn fx:id="statusColumn" text="الحالة" prefWidth="110"/>
+                        </columns>
+                    </TableView>
+
+                    <HBox spacing="10" alignment="CENTER_LEFT">
+                        <Label fx:id="countLabel" styleClass="muted"/>
+                        <Region HBox.hgrow="ALWAYS"/>
+                        <Button fx:id="viewButton" text="عرض" styleClass="btn, btn-secondary" onAction="#onView">
+                            <graphic><Icon name="view"/></graphic>
+                        </Button>
+                        <Button fx:id="editButton" text="تعديل" styleClass="btn, btn-secondary" onAction="#onEdit">
+                            <graphic><Icon name="edit"/></graphic>
+                        </Button>
+                        <Button fx:id="toggleButton" text="تعطيل" styleClass="btn, btn-secondary" onAction="#onToggleActive"/>
+                    </HBox>
+                </VBox>
+            </Tab>
+            <Tab fx:id="categoriesTab" text="الأقسام"/>
+            <Tab fx:id="brandsTab" text="الماركات"/>
+            <Tab fx:id="unitsTab" text="الوحدات"/>
+        </TabPane>
+    </VBox>
+</StackPane>

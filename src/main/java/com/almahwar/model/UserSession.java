@@ -12,11 +12,25 @@ public final class UserSession {
     private final User user;
     private final Set<Permission> permissions;
     private final LocalDateTime loginAt;
+    private final boolean passwordChangeRequired;
 
     public UserSession(User user, Set<Permission> permissions, LocalDateTime loginAt) {
+        this(user, permissions, loginAt, false);
+    }
+
+    /**
+     * @param passwordChangeRequired the user must choose a new password before anything else: such a session
+     *                               carries no permissions at all, so every service refuses until it is done
+     */
+    public UserSession(User user, Set<Permission> permissions, LocalDateTime loginAt, boolean passwordChangeRequired) {
         this.user = user;
-        this.permissions = Set.copyOf(permissions);
+        this.permissions = passwordChangeRequired ? Set.of() : Set.copyOf(permissions);
         this.loginAt = loginAt;
+        this.passwordChangeRequired = passwordChangeRequired;
+    }
+
+    public boolean isPasswordChangeRequired() {
+        return passwordChangeRequired;
     }
 
     public User getUser() {

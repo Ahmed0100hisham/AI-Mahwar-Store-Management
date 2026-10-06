@@ -21,6 +21,18 @@ public class BrandDao extends BaseDao {
         return queryList(SELECT + " WHERE is_active = 1 ORDER BY name_ar", BrandDao::map);
     }
 
+    /** Arabic/English name or country contains {@code text}; {@code null} or blank text matches all. */
+    public List<Brand> search(String text, boolean activeOnly) {
+        String like = text == null || text.isBlank() ? "%" : likeContains(text);
+        return queryList(SELECT + " WHERE (name_ar LIKE ? OR name_en LIKE ? OR country LIKE ?)"
+                + (activeOnly ? " AND is_active = 1" : "") + " ORDER BY name_ar", BrandDao::map, like, like, like);
+    }
+
+    public boolean existsByName(String nameAr, Integer excludeId) {
+        return queryLong("SELECT COUNT(*) FROM dbo.Brands WHERE name_ar = ? AND brand_id <> ?",
+                nameAr.trim(), excludeId == null ? 0 : excludeId) > 0;
+    }
+
     public Optional<Brand> findById(int brandId) {
         return queryOne(SELECT + " WHERE brand_id = ?", BrandDao::map, brandId);
     }

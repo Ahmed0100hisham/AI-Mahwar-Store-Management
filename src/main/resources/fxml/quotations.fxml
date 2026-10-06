@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import com.almahwar.controller.support.Icon?>
+
+<!-- Quotations module: list. New quotation, details, print preview and the converted sale open in place. -->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="pageHost" fx:controller="com.almahwar.controller.QuotationsController" styleClass="module-root">
+
+    <VBox fx:id="listPage" styleClass="page-content" spacing="16">
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="عروض الأسعار" styleClass="page-title"/>
+                <Label text="عروض أسعار للعملاء دون أي أثر على المخزون أو الحسابات؛ العرض المقبول يُحوَّل إلى فاتورة بيع"
+                       styleClass="page-subtitle" wrapText="true"/>
+            </VBox>
+            <Button fx:id="newButton" text="عرض سعر جديد" styleClass="btn, btn-primary" onAction="#onNew">
+                <graphic><Icon name="plus"/></graphic>
+            </Button>
+        </HBox>
+
+        <Label fx:id="listMessage" wrapText="true" maxWidth="Infinity" visible="false" managed="false"/>
+
+        <VBox spacing="12" styleClass="card, module-card" VBox.vgrow="ALWAYS">
+            <HBox styleClass="filter-bar" spacing="10" alignment="CENTER_LEFT">
+                <TextField fx:id="searchField" promptText="رقم العرض أو العميل أو الهاتف"
+                           HBox.hgrow="ALWAYS" prefWidth="220" minWidth="150" maxWidth="320"/>
+                <Label text="من" styleClass="muted" minWidth="-Infinity"/>
+                <DatePicker fx:id="fromDate" prefWidth="135" minWidth="125"/>
+                <Label text="إلى" styleClass="muted" minWidth="-Infinity"/>
+                <DatePicker fx:id="toDate" prefWidth="135" minWidth="125"/>
+                <ComboBox fx:id="customerFilter" prefWidth="170" minWidth="130"/>
+                <ComboBox fx:id="statusFilter" prefWidth="130" minWidth="110"/>
+                <ComboBox fx:id="priceTypeFilter" prefWidth="120" minWidth="105"/>
+                <Region HBox.hgrow="SOMETIMES"/>
+                <Button text="مسح" styleClass="btn, btn-secondary" minWidth="-Infinity" onAction="#onClearFilters">
+                    <graphic><Icon name="filter-off"/></graphic>
+                </Button>
+            </HBox>
+
+            <TableView fx:id="quotationsTable" VBox.vgrow="ALWAYS" prefHeight="520">
+                <columns>
+                    <TableColumn fx:id="noColumn" text="رقم العرض" prefWidth="105"/>
+                    <TableColumn minWidth="150" fx:id="dateColumn" text="التاريخ" prefWidth="125"/>
+                    <TableColumn fx:id="customerColumn" text="العميل" prefWidth="180"/>
+                    <TableColumn fx:id="phoneColumn" text="الهاتف" prefWidth="100"/>
+                    <TableColumn fx:id="typeColumn" text="التسعير" prefWidth="70"/>
+                    <TableColumn fx:id="totalColumn" text="الإجمالي" prefWidth="95"/>
+                    <TableColumn fx:id="validColumn" text="صالح حتى" prefWidth="90"/>
+                    <TableColumn fx:id="statusColumn" text="الحالة" prefWidth="100"/>
+                    <TableColumn fx:id="saleColumn" text="الفاتورة" prefWidth="100"/>
+                    <TableColumn fx:id="userColumn" text="المستخدم" prefWidth="100"/>
+                </columns>
+            </TableView>
+
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label fx:id="countLabel" styleClass="muted"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="viewButton" text="عرض" styleClass="btn, btn-secondary" onAction="#onView">
+                    <graphic><Icon name="view"/></graphic>
+                </Button>
+                <Button fx:id="printButton" text="معاينة وطباعة" styleClass="btn, btn-secondary" onAction="#onPrint">
+                    <graphic><Icon name="print"/></graphic>
+                </Button>
+            </HBox>
+        </VBox>
+    </VBox>
+</StackPane>

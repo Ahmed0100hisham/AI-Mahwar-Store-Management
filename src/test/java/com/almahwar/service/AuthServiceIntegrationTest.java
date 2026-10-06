@@ -121,7 +121,7 @@ class AuthServiceIntegrationTest {
         assertTrue(session.isLoggedIn());
         assertEquals(Role.CASHIER, s.getUser().getRoleCode());
         assertNull(s.getUser().getPasswordHash(), "hash must not stay in memory");
-        assertTrue(s.hasPermission(Permission.SALES));
+        assertTrue(s.hasPermission(Permission.SALES_CREATE));
         assertFalse(s.hasPermission(Permission.CASH));
         assertThrows(AccessDeniedException.class, () -> session.requirePermission(Permission.CASH));
 

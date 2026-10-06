@@ -23,12 +23,25 @@ class DashboardCardsTest {
     @Test
     void todaySalesShowsYesterdayAsCaption() {
         CardView c = view(Metric.TODAY_SALES, "1250.750", "81.060");
-        assertEquals("مبيعات اليوم", c.title());
+        assertEquals("صافي مبيعات اليوم", c.title(), "the card shows net sales (gross − returns)");
         assertEquals("1,250.750 د.ك", c.value());
         assertEquals("أمس: 81.060 د.ك", c.caption());
         assertEquals(Tone.PRIMARY, c.tone());
         assertTrue(c.money());
         assertEquals("kpi-primary", c.styleClass());
+    }
+
+    @Test
+    void netSalesCardsShowGrossAndReturns() {
+        CardView today = DashboardCards.view(new MetricValue(Metric.TODAY_SALES, new BigDecimal("70.000"),
+                new BigDecimal("12.000"), new BigDecimal("100.000"), new BigDecimal("30.000")));
+        assertEquals("70.000 د.ك", today.value(), "net, never gross under a net title");
+        assertEquals("الإجمالي 100.000  •  المرتجعات 30.000  •  أمس: 12.000 د.ك", today.caption());
+        CardView month = DashboardCards.view(new MetricValue(Metric.MONTH_SALES, new BigDecimal("-30.000"), null,
+                BigDecimal.ZERO.setScale(3), new BigDecimal("30.000")));
+        assertEquals("صافي مبيعات الشهر", month.title());
+        assertEquals("الإجمالي 0.000  •  المرتجعات 30.000  •  منذ بداية الشهر", month.caption());
+        assertTrue(month.negative(), "a month with only returns is negative");
     }
 
     @Test

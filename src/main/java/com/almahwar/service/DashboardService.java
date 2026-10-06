@@ -29,9 +29,11 @@ public interface DashboardService {
 
     /** The dashboard figures, in display order, with the permissions that unlock each one. */
     enum Metric {
-        TODAY_SALES("مبيعات اليوم", true, EnumSet.of(SALES, FINANCIAL_REPORTS)),
-        MONTH_SALES("مبيعات الشهر", true, EnumSet.of(FINANCIAL_REPORTS)),
-        TODAY_INVOICES("فواتير اليوم", false, EnumSet.of(SALES, FINANCIAL_REPORTS)),
+        /** Net sales today (gross − today's returns); gross and returns travel with the value. */
+        TODAY_SALES("صافي مبيعات اليوم", true, EnumSet.of(SALES_VIEW, FINANCIAL_REPORTS)),
+        /** Net sales this month (gross − this month's returns). */
+        MONTH_SALES("صافي مبيعات الشهر", true, EnumSet.of(FINANCIAL_REPORTS)),
+        TODAY_INVOICES("فواتير اليوم", false, EnumSet.of(SALES_VIEW, FINANCIAL_REPORTS)),
         NET_PROFIT("صافي الربح", true, EnumSet.of(FINANCIAL_REPORTS)),
         EXPENSES("المصروفات", true, EnumSet.of(Permission.EXPENSES)),
         CASH_BALANCE("رصيد الخزنة", true, EnumSet.of(CASH)),
@@ -69,9 +71,16 @@ public interface DashboardService {
      * One figure.
      *
      * @param value         KWD amount or count (see {@link Metric#isMoney()})
-     * @param previousValue comparison figure (e.g. yesterday's sales for TODAY_SALES), or {@code null}
+     * @param previousValue comparison figure (e.g. yesterday's net sales for TODAY_SALES), or {@code null}
+     * @param gross         for the sales figures: gross sales before returns, else {@code null}
+     * @param returns       for the sales figures: the returns subtracted from {@code gross}, else {@code null}
      */
-    record MetricValue(Metric metric, BigDecimal value, BigDecimal previousValue) {
+    record MetricValue(Metric metric, BigDecimal value, BigDecimal previousValue, BigDecimal gross,
+                       BigDecimal returns) {
+
+        public MetricValue(Metric metric, BigDecimal value, BigDecimal previousValue) {
+            this(metric, value, previousValue, null, null);
+        }
     }
 
     /** Ranges offered by the sales chart. */

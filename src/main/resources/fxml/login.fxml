@@ -12,6 +12,7 @@
 <?import javafx.scene.layout.Region?>
 <?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.Circle?>
 <?import javafx.scene.shape.SVGPath?>
 
 <StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
@@ -52,7 +53,7 @@
 
             <!-- Database unreachable -->
             <VBox fx:id="dbErrorPane" alignment="CENTER" spacing="14" visible="false" managed="false">
-                <Label text="تعذّر الاتصال بقاعدة البيانات" styleClass="login-title"/>
+                <Label fx:id="dbErrorTitle" text="تعذّر الاتصال بقاعدة البيانات" styleClass="login-title"/>
                 <Label fx:id="dbErrorLabel" styleClass="muted" wrapText="true" textAlignment="CENTER"/>
                 <Button text="إعادة المحاولة" styleClass="btn, btn-primary" onAction="#onRetryConnection"/>
             </VBox>
@@ -98,13 +99,17 @@
 
                 <Button fx:id="loginButton" text="تسجيل الدخول" maxWidth="Infinity"
                         styleClass="btn, btn-primary, btn-lg" onAction="#onLogin"/>
+                <HBox fx:id="loginStatusBox" spacing="6" alignment="CENTER_LEFT" visible="false" managed="false">
+                    <Circle radius="4" styleClass="login-status-dot"/>
+                    <Label fx:id="loginStatusLabel" styleClass="login-status"/>
+                </HBox>
             </VBox>
 
             <!-- First run: create the administrator -->
             <VBox fx:id="setupPane" spacing="12" visible="false" managed="false" styleClass="login-form">
                 <VBox spacing="4">
-                    <Label text="إعداد النظام لأول مرة" styleClass="login-title"/>
-                    <Label text="لا يوجد مستخدمون بعد. أنشئ حساب مدير النظام للبدء."
+                    <Label text="إعداد المسؤول الأول" styleClass="login-title"/>
+                    <Label text="هذا أول تشغيل للبرنامج على قاعدة البيانات: أنشئ حساب مدير النظام للبدء. لا يوجد حساب أو كلمة مرور افتراضية."
                            styleClass="login-subtitle" wrapText="true"/>
                 </VBox>
 

@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleButton?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import com.almahwar.controller.support.Icon?>
+
+<!--
+  Point of sale. Keyboard first: the search field takes barcode scans (scan → Enter → added, focus stays),
+  F2 search · F4 customer · F6 discount · F8 payment · F10 complete · Delete remove line · Esc close search.
+  Sale details and the invoice preview open in place (pageHost).
+-->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="pageHost" fx:controller="com.almahwar.controller.PosController" styleClass="module-root">
+
+    <BorderPane fx:id="posPage" styleClass="pos-root">
+        <top>
+            <HBox styleClass="pos-header" alignment="CENTER_LEFT" spacing="12">
+                <Button fx:id="backButton" text="المبيعات" styleClass="btn, btn-secondary, btn-back" onAction="#onBack">
+                    <graphic><Icon name="back"/></graphic>
+                </Button>
+                <VBox spacing="2" HBox.hgrow="ALWAYS">
+                    <Label fx:id="titleLabel" text="نقطة البيع" styleClass="page-title"/>
+                    <Label fx:id="subtitleLabel" styleClass="page-subtitle"/>
+                </VBox>
+                <Label text="نوع البيع" styleClass="field-label"/>
+                <HBox styleClass="segmented">
+                    <ToggleButton fx:id="retailToggle" text="تجزئة" styleClass="segment, pos-segment"/>
+                    <ToggleButton fx:id="wholesaleToggle" text="جملة" styleClass="segment, pos-segment"/>
+                </HBox>
+                <Label fx:id="cashierLabel" styleClass="pos-cashier"/>
+            </HBox>
+        </top>
+
+        <center>
+            <VBox spacing="10" styleClass="pos-main">
+                <TextField fx:id="searchField" styleClass="pos-search"
+                           promptText="امسح الباركود أو اكتب اسم الصنف أو الكود ثم Enter   (F2)"/>
+                <Label fx:id="posMessage" wrapText="true" maxWidth="Infinity" visible="false" managed="false"/>
+                <!-- Shown when the user tries to leave with an unsaved cart (side menu, logout, closing the window ...) -->
+                <VBox fx:id="leaveBox" styleClass="pos-override, pos-leave" spacing="8" visible="false" managed="false">
+                    <Label text="السلة تحتوي على أصناف غير محفوظة. ماذا تريد قبل مغادرة نقطة البيع؟" styleClass="pos-leave-title" wrapText="true"/>
+                    <HBox spacing="8" alignment="CENTER_LEFT">
+                        <Button fx:id="leaveCompleteButton" text="إتمام البيع ثم المتابعة" styleClass="btn, btn-primary" onAction="#onLeaveComplete"/>
+                        <Button fx:id="leaveDraftButton" text="تعليق كمسودة ثم المتابعة" styleClass="btn, btn-secondary" onAction="#onLeaveDraft"/>
+                        <Button fx:id="leaveStayButton" text="البقاء في نقطة البيع" styleClass="btn, btn-secondary" onAction="#onLeaveStay"/>
+                        <Button fx:id="leaveClearButton" text="مسح السلة" styleClass="btn, btn-danger" onAction="#onLeaveClear">
+                            <graphic><Icon name="delete"/></graphic>
+                        </Button>
+                    </HBox>
+                    <HBox fx:id="leaveClearConfirm" spacing="8" alignment="CENTER_LEFT" visible="false" managed="false">
+                        <Label text="سيتم حذف كل أصناف السلة نهائيًا دون حفظ. هل أنت متأكد؟"/>
+                        <Button fx:id="leaveClearConfirmButton" text="نعم، امسح السلة وتابع" styleClass="btn, btn-danger" onAction="#onLeaveClearConfirmed"/>
+                        <Button text="تراجع" styleClass="btn, btn-secondary" onAction="#onLeaveClearCancelled"/>
+                    </HBox>
+                </VBox>
+                <HBox fx:id="lastSaleBar" styleClass="pos-done" spacing="10" alignment="CENTER_LEFT"
+                      visible="false" managed="false">
+                    <Label fx:id="lastSaleLabel" wrapText="true" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+                    <Button text="عرض الفاتورة" styleClass="btn, btn-secondary" onAction="#onViewLastSale">
+                        <graphic><Icon name="view"/></graphic>
+                    </Button>
+                    <Button text="طباعة الفاتورة" styleClass="btn, btn-secondary" onAction="#onPrintLastSale">
+                        <graphic><Icon name="print"/></graphic>
+                    </Button>
+                </HBox>
+
+                <TableView fx:id="cartTable" VBox.vgrow="ALWAYS" styleClass="cart-table">
+                    <columns>
+                        <TableColumn fx:id="lineNoColumn" text="#" prefWidth="36" sortable="false"/>
+                        <TableColumn fx:id="productColumn" text="الصنف" prefWidth="230" sortable="false"/>
+                        <TableColumn fx:id="codeColumn" text="الكود" prefWidth="85" sortable="false"/>
+                        <TableColumn fx:id="unitColumn" text="الوحدة" prefWidth="60" sortable="false"/>
+                        <TableColumn fx:id="quantityColumn" text="الكمية" prefWidth="150" sortable="false"/>
+                        <TableColumn fx:id="priceColumn" text="السعر" prefWidth="95" sortable="false"/>
+                        <TableColumn fx:id="discountColumn" text="الخصم" prefWidth="85" sortable="false"/>
+                        <TableColumn fx:id="lineTotalColumn" text="الإجمالي" prefWidth="100" sortable="false"/>
+                        <TableColumn fx:id="removeColumn" text="" prefWidth="50" sortable="false"/>
+                    </columns>
+                </TableView>
+
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Label fx:id="cartCountLabel" styleClass="muted"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <HBox fx:id="clearConfirmBox" styleClass="pos-confirm" spacing="8" alignment="CENTER_LEFT"
+                          visible="false" managed="false">
+                        <Label text="سيتم حذف كل الأصناف من السلة. هل أنت متأكد؟"/>
+                        <Button fx:id="confirmClearButton" text="نعم، امسح السلة" styleClass="btn, btn-danger"
+                                onAction="#onConfirmClear"/>
+                        <Button text="تراجع" styleClass="btn, btn-secondary" onAction="#onCancelClear"/>
+                    </HBox>
+                    <Button fx:id="clearButton" text="مسح السلة" styleClass="btn, btn-secondary" onAction="#onClearCart">
+                        <graphic><Icon name="delete"/></graphic>
+                    </Button>
+                </HBox>
+            </VBox>
+        </center>
+
+        <right>
+            <!-- Side panel: customer and payment scroll if the window is short; the totals and the main action are
+                 pinned at the bottom, so "إتمام البيع" is always visible (also at 1366×768) -->
+            <BorderPane prefWidth="370" minWidth="330">
+                <center>
+                    <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="pos-side-scroll">
+                        <VBox fx:id="sidePanel" styleClass="pos-side" spacing="10">
+
+                            <VBox styleClass="card, pos-card" spacing="6">
+                                <HBox alignment="CENTER_LEFT" spacing="8">
+                                    <Label text="العميل" styleClass="card-title"/>
+                                    <Label text="F4" styleClass="key-hint"/>
+                                    <Region HBox.hgrow="ALWAYS"/>
+                                    <Button fx:id="walkInButton" text="عميل نقدي" styleClass="btn, btn-secondary, btn-sm"
+                                            onAction="#onWalkIn"/>
+                                </HBox>
+                                <Label fx:id="customerNameLabel" styleClass="pos-customer"/>
+                                <Label fx:id="customerInfoLabel" styleClass="muted" wrapText="true"/>
+                                <TextField fx:id="customerField" promptText="بحث عن عميل: الكود أو الاسم أو الهاتف"/>
+                            </VBox>
+
+                            <VBox styleClass="card, pos-card" spacing="6">
+                                <HBox alignment="CENTER_LEFT" spacing="8">
+                                    <Label text="الدفع" styleClass="card-title"/>
+                                    <Label text="F8" styleClass="key-hint"/>
+                                </HBox>
+                                <ComboBox fx:id="paymentTypeCombo" maxWidth="Infinity"/>
+                                <HBox fx:id="partialBox" spacing="8">
+                                    <VBox spacing="4" HBox.hgrow="ALWAYS">
+                                        <Label text="طريقة دفع المبلغ المدفوع" styleClass="field-label"/>
+                                        <ComboBox fx:id="partialMethodCombo" maxWidth="Infinity"/>
+                                    </VBox>
+                                    <VBox spacing="4" prefWidth="120">
+                                        <Label text="المدفوع الآن" styleClass="field-label"/>
+                                        <TextField fx:id="paidField" promptText="0.000"/>
+                                    </VBox>
+                                </HBox>
+                                <HBox fx:id="cashBox" spacing="8" alignment="CENTER_LEFT">
+                                    <VBox spacing="4" prefWidth="140">
+                                        <Label text="المبلغ المستلم" styleClass="field-label"/>
+                                        <TextField fx:id="receivedField" promptText="اختياري"/>
+                                    </VBox>
+                                    <Region HBox.hgrow="ALWAYS"/>
+                                    <VBox spacing="4" alignment="CENTER_RIGHT">
+                                        <Label text="الباقي للعميل" styleClass="field-label"/>
+                                        <Label fx:id="changeLabel" styleClass="pos-change"/>
+                                    </VBox>
+                                </HBox>
+                                <Label fx:id="paymentHint" styleClass="muted" wrapText="true"/>
+                            </VBox>
+
+                            <VBox fx:id="overrideBox" styleClass="pos-override" spacing="8" visible="false" managed="false">
+                                <Label fx:id="overrideLabel" wrapText="true"/>
+                                <HBox spacing="8">
+                                    <Button fx:id="overrideButton" text="تجاوز الحد وإتمام البيع" styleClass="btn, btn-danger"
+                                            onAction="#onOverrideCredit"/>
+                                    <Button text="إلغاء" styleClass="btn, btn-secondary" onAction="#onCancelOverride"/>
+                                </HBox>
+                            </VBox>
+                        </VBox>
+                    </ScrollPane>
+                </center>
+                <bottom>
+                    <VBox styleClass="pos-checkout" spacing="8">
+                        <VBox styleClass="card, pos-checkout-card, totals-card" spacing="2">
+                            <HBox styleClass="total-row"><Label text="مجموع الأصناف"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="subtotalLabel" styleClass="total-value"/></HBox>
+                            <HBox styleClass="total-row" alignment="CENTER_LEFT" spacing="8">
+                                <Label text="خصم الفاتورة"/>
+                                <Label text="F6" styleClass="key-hint"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <TextField fx:id="discountField" promptText="0.000" prefWidth="110" maxWidth="120"/>
+                            </HBox>
+                            <HBox styleClass="pos-total" alignment="CENTER_LEFT"><Label text="الصافي"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="totalLabel" styleClass="pos-total-value"/></HBox>
+                            <HBox styleClass="total-row" spacing="6">
+                                <Label text="المدفوع"/><Label fx:id="paidLabel" styleClass="total-value"/>
+                                <Region HBox.hgrow="ALWAYS"/>
+                                <Label text="المتبقي على العميل"/><Label fx:id="remainingLabel" styleClass="total-value"/>
+                            </HBox>
+                        </VBox>
+                        <Button fx:id="completeButton" text="إتمام البيع   (F10)" styleClass="btn, btn-primary, btn-lg, pos-complete"
+                                maxWidth="Infinity" onAction="#onComplete">
+                            <graphic><Icon name="check" size="18"/></graphic>
+                        </Button>
+                        <Button fx:id="draftButton" text="تعليق الفاتورة (حفظ كمسودة)" styleClass="btn, btn-secondary, btn-sm"
+                                maxWidth="Infinity" onAction="#onSaveDraft">
+                            <graphic><Icon name="pause"/></graphic>
+                        </Button>
+                    </VBox>
+                </bottom>
+            </BorderPane>
+        </right>
+
+        <bottom>
+            <HBox styleClass="pos-shortcuts" alignment="CENTER_LEFT" spacing="14">
+                <Label text="اختصارات:" styleClass="field-label"/>
+                <Label text="F2 بحث الصنف"/>
+                <Label text="F4 العميل"/>
+                <Label text="F6 الخصم"/>
+                <Label text="F8 الدفع"/>
+                <Label text="F10 إتمام البيع"/>
+                <Label text="Delete حذف الصنف المحدد"/>
+                <Label text="Esc إغلاق البحث"/>
+            </HBox>
+        </bottom>
+    </BorderPane>
+</StackPane>

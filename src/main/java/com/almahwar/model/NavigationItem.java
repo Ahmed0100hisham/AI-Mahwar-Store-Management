@@ -11,19 +11,21 @@ import java.util.Set;
 public enum NavigationItem {
 
     HOME("الرئيسية", Permission.DASHBOARD),
-    POINT_OF_SALE("نقطة البيع", Permission.SALES),
-    PRODUCTS("المنتجات", Permission.PRODUCTS),
-    INVENTORY("المخزون", Permission.INVENTORY),
-    PURCHASES("المشتريات", Permission.PURCHASES),
-    CUSTOMERS("العملاء", Permission.CUSTOMERS, Permission.CUSTOMER_PAYMENTS),
-    SUPPLIERS("الموردون", Permission.SUPPLIERS, Permission.SUPPLIER_PAYMENTS),
-    QUOTATIONS("عروض الأسعار", Permission.QUOTATIONS),
+    POINT_OF_SALE("نقطة البيع", Permission.SALES_CREATE),
+    SALES("المبيعات", Permission.SALES_VIEW),
+    PRODUCTS("المنتجات", Permission.PRODUCTS_VIEW, Permission.PRODUCTS),
+    INVENTORY("المخزون", Permission.INVENTORY, Permission.INVENTORY_ADJUST),
+    PURCHASES("المشتريات", Permission.PURCHASES_VIEW),
+    CUSTOMERS("العملاء", Permission.CUSTOMERS_VIEW),
+    SUPPLIERS("الموردون", Permission.SUPPLIERS_VIEW),
+    QUOTATIONS("عروض الأسعار", Permission.QUOTATIONS_VIEW),
     RETURNS("المرتجعات", Permission.SALE_RETURNS, Permission.PURCHASE_RETURNS),
     CASH("الخزنة", Permission.CASH),
     EXPENSES("المصروفات", Permission.EXPENSES),
-    REPORTS("التقارير", Permission.FINANCIAL_REPORTS),
-    USERS("المستخدمون", Permission.USERS),
-    SETTINGS("الإعدادات", Permission.SETTINGS);
+    REPORTS("التقارير", Permission.REPORTS_VIEW),
+    USERS("المستخدمون", Permission.USERS_VIEW),
+    SETTINGS("الإعدادات", Permission.SETTINGS_VIEW),
+    BACKUP("النسخ الاحتياطي", Permission.BACKUP_VIEW);
 
     private final String labelAr;
     private final Set<Permission> anyOf;

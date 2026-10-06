@@ -1,0 +1,801 @@
+/* ==========================================================
+   Al Mahwar — shared components (buttons, forms, tables, badges, cards, tabs, dialogs, states)
+   Every screen uses these classes; screen files only add layout.
+   ========================================================== */
+
+/* ---------- Buttons ----------
+   btn-primary: the one main action of a page · btn-secondary: other actions · btn-danger: destructive only ·
+   btn-success: a positive confirmation only · btn-ghost: quiet actions on bars · btn-sm / btn-lg: sizes */
+.btn {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 8 16 8 16;
+    -fx-font-size: 13.5px;
+    -fx-graphic-text-gap: 8;
+    -fx-cursor: hand;
+    -fx-background-insets: 0;
+}
+
+.btn-primary {
+    -fx-background-color: -color-primary;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.btn-primary:hover {
+    -fx-background-color: -color-primary-dark;
+}
+
+.btn-secondary {
+    -fx-background-color: -color-surface;
+    -fx-text-fill: -color-primary;
+    -fx-border-color: -color-border-strong;
+}
+
+.btn-secondary:hover {
+    -fx-background-color: -color-primary-light;
+    -fx-border-color: -color-primary-soft;
+}
+
+.btn-success {
+    -fx-background-color: -color-success;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.btn-danger {
+    -fx-background-color: -color-danger;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.btn-danger:hover {
+    -fx-background-color: #A93131;
+}
+
+.btn-ghost {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-text-secondary;
+}
+
+.btn-ghost:hover {
+    -fx-background-color: -color-primary-light;
+    -fx-text-fill: -color-primary;
+}
+
+.btn-link-danger {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-danger;
+    -fx-padding: 4 8 4 8;
+}
+
+.btn-link-danger:hover {
+    -fx-background-color: -color-danger-bg;
+}
+
+.btn-sm {
+    -fx-padding: 3 10 3 10;
+    -fx-font-size: 12.5px;
+}
+
+.btn-lg {
+    -fx-pref-height: 44px;
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+/* Disabled actions stay readable and clearly inactive */
+.btn:disabled {
+    -fx-opacity: 0.45;
+}
+
+.btn-primary:disabled {
+    -fx-opacity: 0.55;
+}
+
+/* Keyboard focus ring (no layout shift) */
+.btn:focus-visible {
+    -fx-effect: dropshadow(three-pass-box, rgba(14, 76, 138, 0.45), 5, 0.5, 0, 0);
+}
+
+.btn-spinner {
+    -fx-progress-color: white;
+    -fx-pref-width: 18px;
+    -fx-pref-height: 18px;
+}
+
+/* Keyboard hint, e.g. "F10" */
+.key-hint {
+    -fx-background-color: #EEF2F7;
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 11px;
+    -fx-padding: 1 6 1 6;
+    -fx-background-radius: 4;
+    -fx-border-color: #D5DBE4;
+    -fx-border-radius: 4;
+}
+
+/* Segmented control (two to four exclusive choices) */
+.segment {
+    -fx-background-color: #EEF2F7;
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 12.5px;
+    -fx-padding: 5 12 5 12;
+    -fx-background-radius: 0;
+    -fx-cursor: hand;
+}
+
+.segmented > .segment:first-child { -fx-background-radius: 0 8 8 0; }   /* RTL: first is on the right */
+.segmented > .segment:last-child  { -fx-background-radius: 8 0 0 8; }
+
+.segment:hover {
+    -fx-background-color: -color-primary-light;
+}
+
+.segment:selected {
+    -fx-background-color: -color-primary;
+    -fx-text-fill: white;
+}
+
+/* ---------- Form controls ---------- */
+.text-field,
+.text-area,
+.combo-box,
+.date-picker,
+.password-field {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-border-color: -color-border-strong;
+    -fx-background-color: -color-surface;
+    -fx-padding: 7 10 7 10;
+}
+
+.text-field:focused,
+.password-field:focused,
+.text-area:focused,
+.combo-box:focused,
+.date-picker:focused {
+    -fx-border-color: -color-primary;
+}
+
+/* The hint stays visible while a field is focused and still empty (search / scan fields) */
+.text-input:focused {
+    -fx-prompt-text-fill: -color-text-faint;
+}
+
+.text-input {
+    -fx-prompt-text-fill: -color-text-faint;
+    -fx-highlight-fill: -color-primary-soft;
+    -fx-highlight-text-fill: -color-text;
+}
+
+.read-only,
+.read-only:focused {
+    -fx-background-color: -color-surface-alt;
+    -fx-border-color: -color-border;
+}
+
+.combo-box:disabled,
+.text-field:disabled,
+.date-picker:disabled {
+    -fx-opacity: 0.8;
+    -fx-background-color: -color-surface-alt;
+}
+
+/* Editable combo box / date picker: one border, not one around the inner editor too */
+.combo-box-base:editable > .text-field,
+.date-picker .text-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 0 4 0 4;
+}
+
+.combo-box-base:editable > .arrow-button,
+.date-picker > .arrow-button {
+    -fx-background-color: transparent;
+}
+
+.combo-box-base:editable,
+.date-picker {
+    -fx-padding: 2 4 2 4;
+}
+
+.combo-box .list-cell {
+    -fx-padding: 1 4 1 4;
+}
+
+.combo-box-popup > .list-view {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-effect: dropshadow(gaussian, rgba(16, 24, 40, 0.12), 12, 0, 0, 4);
+}
+
+.combo-box-popup > .list-view > .virtual-flow > .clipped-container > .sheet > .list-cell:filled:hover {
+    -fx-background-color: -color-primary-light;
+    -fx-text-fill: -color-text;
+}
+
+.check-box:focused > .box {
+    -fx-border-color: -color-primary;
+}
+
+.field-label {
+    -fx-font-size: 13px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-text-secondary;
+}
+
+/* "*" after a required field's label */
+.required {
+    -fx-text-fill: -color-danger;
+    -fx-font-weight: bold;
+}
+
+.field-help {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 12px;
+}
+
+/* Validation next to the field */
+.field-invalid,
+.field-invalid:focused,
+.field-invalid:focus-within {
+    -fx-border-color: -color-danger;
+}
+
+.field-invalid.combo-box,
+.segmented.field-invalid {
+    -fx-border-color: -color-danger;
+    -fx-border-radius: 8;
+}
+
+.field-error,
+.field-error-text {
+    -fx-text-fill: -color-danger;
+    -fx-font-size: 12px;
+}
+
+.field-warning-text {
+    -fx-text-fill: -color-warning-text;
+    -fx-font-size: 12px;
+}
+
+.caps-warning {
+    -fx-text-fill: -color-warning-text;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+}
+
+/* Password field + show/hide button rendered as one input */
+.input-group {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 8;
+    -fx-border-color: -color-border-strong;
+    -fx-border-radius: 8;
+    -fx-alignment: center-left;
+}
+
+.input-group:focus-within {
+    -fx-border-color: -color-primary;
+}
+
+.input-group .text-field,
+.input-group .password-field {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+}
+
+.input-addon {
+    -fx-background-color: transparent;
+    -fx-padding: 6 12 6 12;
+    -fx-cursor: hand;
+}
+
+.input-addon-icon {
+    -fx-fill: #9CA3AF;
+    -fx-scale-x: 0.85;
+    -fx-scale-y: 0.85;
+}
+
+.input-addon:hover .input-addon-icon,
+.input-addon:selected .input-addon-icon {
+    -fx-fill: -color-primary;
+}
+
+/* Inline messages (success / error) at the top of a page or form */
+.form-alert {
+    -fx-padding: 10 14 10 14;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-font-size: 13px;
+}
+
+.form-alert-error {
+    -fx-background-color: -color-danger-bg;
+    -fx-border-color: #F2C4C4;
+    -fx-text-fill: -color-danger-text;
+}
+
+.form-alert-info {
+    -fx-background-color: -color-success-bg;
+    -fx-border-color: #BFE3CD;
+    -fx-text-fill: -color-success-text;
+}
+
+.form-alert-warning {
+    -fx-background-color: -color-warning-bg;
+    -fx-border-color: #F0D59A;
+    -fx-text-fill: -color-warning-text;
+}
+
+/* ---------- Cards ---------- */
+.card {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 12;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 12;
+    -fx-padding: 16 20 16 20;
+    -fx-effect: dropshadow(gaussian, rgba(16, 24, 40, 0.05), 8, 0, 0, 1);
+}
+
+.module-card {
+    -fx-padding: 16 18 16 18;
+}
+
+.stat-chip {
+    -fx-background-color: -color-surface;
+    -fx-background-radius: 10;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 10;
+    -fx-padding: 8 14 8 14;
+}
+
+.stat-chip-warning {
+    -fx-background-color: -color-warning-bg;
+    -fx-border-color: #F0D59A;
+}
+
+.stat-chip-primary {
+    -fx-background-color: -color-primary-light;
+    -fx-border-color: -color-primary-soft;
+}
+
+.stat-value {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-text;
+}
+
+.info-box {
+    -fx-background-color: -color-surface-alt;
+    -fx-background-radius: 10;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 10;
+    -fx-padding: 12 16 12 16;
+}
+
+.info-value {
+    -fx-font-size: 14px;
+    -fx-text-fill: -color-text;
+}
+
+/* ---------- Badges (statuses) ----------
+   Semantic groups only: success (active, posted, verified, accepted, paid) · warning (draft, sent, pending,
+   low) · danger (cancelled, rejected, failed, disabled) · info (converted, partial) · muted (neutral / expired) */
+.badge {
+    -fx-font-size: 11.5px;
+    -fx-padding: 2 8 2 8;
+    -fx-background-radius: 10;
+}
+
+.badge-success { -fx-background-color: -color-success-bg; -fx-text-fill: -color-success-text; }
+.badge-warning { -fx-background-color: -color-warning-bg; -fx-text-fill: -color-warning-text; }
+.badge-danger  { -fx-background-color: -color-danger-bg;  -fx-text-fill: -color-danger-text; }
+.badge-info    { -fx-background-color: -color-info-bg;    -fx-text-fill: -color-info-text; }
+.badge-muted   { -fx-background-color: #EEF0F3;           -fx-text-fill: #4B5563; }
+
+.count-badge {
+    -fx-background-color: -color-danger-bg;
+    -fx-text-fill: -color-danger-text;
+    -fx-font-size: 12px;
+    -fx-font-weight: bold;
+    -fx-padding: 1 9 1 9;
+    -fx-background-radius: 10;
+}
+
+/* ---------- Tables ---------- */
+.table-view {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 10;
+    -fx-background-radius: 10;
+    -fx-padding: 0;
+    -fx-table-cell-border-color: #EEF1F5;
+}
+
+.table-view:focused {
+    -fx-background-insets: 0;
+    -fx-border-color: -color-primary-soft;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: -color-surface-alt;
+    -fx-background-radius: 10 10 0 0;
+    -fx-border-color: transparent transparent -color-border transparent;
+}
+
+.table-view .column-header,
+.table-view .filler {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent #E8ECF1 transparent transparent;
+    -fx-size: 36px;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-weight: bold;
+    -fx-font-size: 13px;
+}
+
+.table-view .column-header .arrow {
+    -fx-background-color: -color-text-muted;
+}
+
+.table-row-cell {
+    -fx-cell-size: 32px;
+    -fx-background-color: -color-surface;
+    -fx-border-color: transparent transparent #F0F2F6 transparent;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #FAFBFD;
+}
+
+.table-row-cell:filled:hover {
+    -fx-background-color: #F1F6FC;
+}
+
+.table-row-cell:selected,
+.table-row-cell:filled:selected:hover {
+    -fx-background-color: -color-primary;
+}
+
+.table-row-cell:selected .text {
+    -fx-fill: white;
+}
+
+.table-cell {
+    -fx-font-size: 13.5px;
+    -fx-padding: 2 5 2 5;
+}
+
+.table-view .placeholder .label {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 13.5px;
+}
+
+/* Badges and coloured figures keep their colours on a selected (blue) row */
+.table-row-cell:selected .badge-success .text { -fx-fill: -color-success-text; }
+.table-row-cell:selected .badge-warning .text { -fx-fill: -color-warning-text; }
+.table-row-cell:selected .badge-danger .text  { -fx-fill: -color-danger-text; }
+.table-row-cell:selected .badge-info .text    { -fx-fill: -color-info-text; }
+.table-row-cell:selected .badge-muted .text   { -fx-fill: #4B5563; }
+.table-row-cell:selected .qty-low,
+.table-row-cell:selected .qty-in,
+.table-row-cell:selected .qty-out,
+.table-row-cell:selected .balance-due,
+.table-row-cell:selected .balance-credit {
+    -fx-text-fill: white;
+}
+
+.money-cell {
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-primary-dark;
+}
+
+.qty-cell {
+    -fx-font-weight: bold;
+}
+
+.qty-low {
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-danger;
+}
+
+.qty-in {
+    -fx-text-fill: -color-success;
+    -fx-font-weight: bold;
+}
+
+.qty-out {
+    -fx-text-fill: -color-danger;
+    -fx-font-weight: bold;
+}
+
+.cell-primary {
+    -fx-font-size: 13px;
+    -fx-text-fill: -color-text;
+}
+
+.cell-secondary {
+    -fx-font-size: 11.5px;
+    -fx-text-fill: -color-text-faint;
+}
+
+/* ---------- Toolbars above tables: search · filters · spacer · actions ---------- */
+.filter-bar {
+    -fx-alignment: center-left;
+}
+
+.filter-bar .combo-box,
+.filter-bar .date-picker,
+.filter-bar .text-field {
+    -fx-pref-height: 36px;
+}
+
+.filter-bar .combo-box {
+    -fx-padding: 1 2 1 2;
+}
+
+/* ---------- Tabs inside a module page ---------- */
+.module-tabs > .tab-header-area {
+    -fx-padding: 0 0 10 0;
+}
+
+.module-tabs > .tab-header-area > .headers-region > .tab {
+    -fx-background-color: transparent;
+    -fx-background-insets: 0;
+    -fx-padding: 8 18 8 18;
+    -fx-border-color: transparent;
+    -fx-border-width: 0 0 3 0;
+    -fx-cursor: hand;
+}
+
+.module-tabs > .tab-header-area > .headers-region > .tab .tab-label {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+}
+
+.module-tabs > .tab-header-area > .headers-region > .tab:hover .tab-label {
+    -fx-text-fill: -color-text;
+}
+
+.module-tabs > .tab-header-area > .headers-region > .tab:selected {
+    -fx-border-color: transparent transparent -color-primary transparent;
+}
+
+.module-tabs > .tab-header-area > .headers-region > .tab:selected .tab-label {
+    -fx-text-fill: -color-primary;
+}
+
+.module-tabs > .tab-header-area > .headers-region > .tab:selected .focus-indicator {
+    -fx-border-color: transparent;
+}
+
+.module-tabs > .tab-header-area > .tab-header-background {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent -color-border transparent;
+}
+
+.module-tabs > .tab-content-area {
+    -fx-background-color: transparent;
+    -fx-padding: 4 0 0 0;
+}
+
+/* ---------- Scroll bars: thin and quiet ---------- */
+.scroll-bar:vertical,
+.scroll-bar:horizontal {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar:vertical {
+    -fx-pref-width: 10px;
+}
+
+.scroll-bar:horizontal {
+    -fx-pref-height: 10px;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: #C9D2DD;
+    -fx-background-radius: 5;
+    -fx-background-insets: 2;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: #AEB9C7;
+}
+
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-padding: 0;
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .increment-arrow,
+.scroll-bar .decrement-arrow {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+/* ---------- Dialogs (AlertUtil: information, warning, error, confirmation) ---------- */
+.dialog-pane {
+    -fx-background-color: -color-surface;
+    -fx-padding: 4 4 8 4;
+}
+
+.dialog-pane > .content.label {
+    -fx-font-size: 14px;
+    -fx-padding: 18 20 12 20;
+    -fx-line-spacing: 3;
+}
+
+.dialog-pane > .button-bar > .container {
+    -fx-padding: 4 12 4 12;
+}
+
+.dialog-pane .button {
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 7 18 7 18;
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border-strong;
+    -fx-text-fill: -color-text;
+    -fx-background-insets: 0;
+    -fx-cursor: hand;
+}
+
+.dialog-pane .button:default {
+    -fx-background-color: -color-primary;
+    -fx-border-color: -color-primary;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+
+.tooltip {
+    -fx-background-color: #1F2A3A;
+    -fx-text-fill: white;
+    -fx-font-size: 12.5px;
+    -fx-background-radius: 6;
+    -fx-padding: 5 9 5 9;
+}
+
+/* ---------- Empty states ---------- */
+.empty-state {
+    -fx-padding: 40 24 40 24;
+}
+
+.empty-icon-box {
+    -fx-background-color: -color-primary-light;
+    -fx-background-radius: 40;
+    -fx-min-width: 72px;
+    -fx-min-height: 72px;
+    -fx-max-width: 72px;
+    -fx-max-height: 72px;
+}
+
+.empty-icon {
+    -fx-fill: -color-primary;
+    -fx-scale-x: 1.4;
+    -fx-scale-y: 1.4;
+}
+
+.empty-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+}
+
+.empty-text {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 13px;
+}
+
+/* ---------- Icons (controller/support/Icon: Material glyphs at 14 / 16 / 18 px) ----------
+   One colour per context, inherited from the button type; the text keeps its own colour. */
+.icon-glyph {
+    -fx-fill: -color-text-secondary;
+}
+
+.btn-primary .icon-glyph,
+.btn-danger .icon-glyph,
+.btn-success .icon-glyph {
+    -fx-fill: white;
+}
+
+.btn-secondary .icon-glyph {
+    -fx-fill: -color-primary;
+}
+
+.btn-ghost .icon-glyph,
+.btn-logout .icon-glyph {
+    -fx-fill: -color-text-muted;
+}
+
+.btn-ghost:hover .icon-glyph,
+.btn-logout:hover .icon-glyph {
+    -fx-fill: -color-primary;
+}
+
+.btn-signout:hover .icon-glyph,
+.btn-link-danger .icon-glyph {
+    -fx-fill: -color-danger;
+}
+
+/* Square icon-only buttons (quantity − / +, remove line): compact, neutral, clear hover and keyboard focus */
+.icon-button {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border-strong;
+    -fx-background-radius: 6;
+    -fx-border-radius: 6;
+    -fx-padding: 0;
+    -fx-min-width: 30px;
+    -fx-min-height: 30px;
+    -fx-pref-width: 30px;
+    -fx-pref-height: 30px;
+    -fx-max-width: 30px;
+    -fx-max-height: 30px;
+    -fx-cursor: hand;
+}
+
+.icon-button:hover {
+    -fx-background-color: -color-primary-light;
+    -fx-border-color: -color-primary-soft;
+}
+
+.icon-button:hover .icon-glyph {
+    -fx-fill: -color-primary;
+}
+
+.icon-button:pressed {
+    -fx-background-color: -color-primary-soft;
+}
+
+.icon-button:focus-visible {
+    -fx-border-color: -color-primary;
+    -fx-effect: dropshadow(three-pass-box, rgba(14, 76, 138, 0.35), 4, 0.4, 0, 0);
+}
+
+/* Destructive icon button: quiet until hovered */
+.icon-button-danger {
+    -fx-border-color: transparent;
+    -fx-background-color: transparent;
+}
+
+.icon-button-danger .icon-glyph {
+    -fx-fill: -color-text-faint;
+}
+
+.icon-button-danger:hover {
+    -fx-background-color: -color-danger-bg;
+    -fx-border-color: #F2C4C4;
+}
+
+.icon-button-danger:hover .icon-glyph {
+    -fx-fill: -color-danger;
+}
+
+/* A success line with its icon (e.g. "sale completed") */
+.form-alert-info .icon-glyph,
+.pos-done .icon-glyph {
+    -fx-fill: -color-success;
+}
+
+/* Permission matrix: granted = check icon, not granted = a muted dash */
+.matrix-yes {
+    -fx-alignment: center;
+}
+
+.matrix-yes .icon-glyph {
+    -fx-fill: -color-success;
+}
+
+.matrix-no {
+    -fx-alignment: center;
+    -fx-text-fill: -color-text-faint;
+}
+
+.table-row-cell:selected .matrix-yes .icon-glyph {
+    -fx-fill: white;
+}

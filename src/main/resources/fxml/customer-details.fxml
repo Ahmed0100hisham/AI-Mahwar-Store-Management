@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Tab?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import com.almahwar.controller.support.Icon?>
+
+<!-- One customer: data, account figures and the account tabs. Opened in place by CustomersController. -->
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.almahwar.controller.CustomerDetailsController"
+            fitToWidth="true" styleClass="content-scroll">
+    <VBox styleClass="page-content" spacing="16">
+
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <Button text="رجوع للقائمة" styleClass="btn, btn-secondary, btn-back" onAction="#onBack">
+                <graphic><Icon name="back"/></graphic>
+            </Button>
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label fx:id="nameLabel" styleClass="page-title"/>
+                    <Label fx:id="statusBadge"/>
+                </HBox>
+                <Label fx:id="codeLabel" styleClass="page-subtitle"/>
+            </VBox>
+            <Button fx:id="payButton" text="تسجيل دفعة (سند قبض)" styleClass="btn, btn-primary" onAction="#onPay"/>
+            <Button fx:id="toggleButton" styleClass="btn, btn-secondary" onAction="#onToggleActive"/>
+            <Button fx:id="editButton" text="تعديل البيانات" styleClass="btn, btn-primary" onAction="#onEdit"/>
+        </HBox>
+
+        <Label fx:id="pageMessage" wrapText="true" maxWidth="Infinity" visible="false" managed="false"/>
+
+        <!-- Account figures -->
+        <HBox fx:id="figures" spacing="16">
+            <VBox styleClass="card, figure-card, figure-primary" spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="الرصيد الحالي" styleClass="kpi-title"/>
+                <Label fx:id="balanceLabel" styleClass="kpi-value, money"/>
+                <Label fx:id="balanceCaption" styleClass="kpi-caption"/>
+            </VBox>
+            <VBox styleClass="card, figure-card, figure-info" spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="حد الائتمان" styleClass="kpi-title"/>
+                <Label fx:id="limitLabel" styleClass="kpi-value, money"/>
+                <Label fx:id="limitCaption" styleClass="kpi-caption"/>
+            </VBox>
+            <VBox fx:id="availableCard" styleClass="card, figure-card, figure-success" spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="الائتمان المتاح" styleClass="kpi-title"/>
+                <Label fx:id="availableLabel" styleClass="kpi-value, money"/>
+                <Label fx:id="availableCaption" styleClass="kpi-caption"/>
+            </VBox>
+        </HBox>
+
+        <!-- Basic data -->
+        <VBox styleClass="card" spacing="12">
+            <Label text="البيانات الأساسية" styleClass="card-title"/>
+            <GridPane fx:id="infoGrid" hgap="24" vgap="10" styleClass="info-grid">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="110"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                    <ColumnConstraints minWidth="110"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+            </GridPane>
+        </VBox>
+
+        <TabPane fx:id="tabs" styleClass="module-tabs" tabClosingPolicy="UNAVAILABLE" minHeight="520">
+            <Tab fx:id="invoicesTab" text="الفواتير"/>
+            <Tab fx:id="paymentsTab" text="المدفوعات"/>
+            <Tab fx:id="returnsTab" text="المرتجعات"/>
+            <Tab fx:id="quotationsTab" text="عروض الأسعار"/>
+            <Tab fx:id="statementTab" text="كشف الحساب"/>
+        </TabPane>
+    </VBox>
+</ScrollPane>

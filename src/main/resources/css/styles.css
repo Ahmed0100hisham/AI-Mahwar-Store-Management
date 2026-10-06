@@ -1,319 +1,60 @@
 /* ==========================================================
-   Al Mahwar Store Management System - Global stylesheet
-   نظام إدارة شركة المحور
+   Al Mahwar Store Management System — نظام إدارة شركة المحور
+   Stylesheet entry point: tokens (theme.css), shared components (components.css), then the screens below.
    ========================================================== */
+@import "theme.css";
+@import "components.css";
 
-/* ---------- Design tokens ---------- */
-.root {
-    -color-primary: #0B5394;
-    -color-primary-dark: #073763;
-    -color-primary-light: #E8F0FA;
-    -color-accent: #00A3A3;
-    -color-success: #2E9E5B;
-    -color-warning: #E69B00;
-    -color-danger: #D64545;
-    -color-info: #3478C6;
-
-    -color-bg: #F3F5F9;
-    -color-surface: #FFFFFF;
-    -color-border: #DDE2EA;
-    -color-text: #1F2937;
-    -color-text-muted: #6B7280;
-    -color-sidebar: #0F2A47;
-    -color-sidebar-hover: #173A61;
-    -color-sidebar-text: #C9D6E6;
-
-    -fx-font-family: "Segoe UI", "Tahoma", "Arial";
-    -fx-font-size: 14px;
-    -fx-text-fill: -color-text;
-    -fx-background-color: -color-bg;
-
-    -fx-accent: -color-primary;
-    -fx-focus-color: -color-primary;
-    -fx-faint-focus-color: rgba(11, 83, 148, 0.15);
-}
-
-.label {
-    -fx-text-fill: -color-text;
-}
-
-.muted {
-    -fx-text-fill: -color-text-muted;
-    -fx-font-size: 12.5px;
-}
-
-/* ---------- Header ---------- */
+/* ==========================================================
+   Application shell: top bar · sidebar · content · status bar
+   ========================================================== */
 .app-header {
-    -fx-background-color: linear-gradient(to left, -color-primary-dark, -color-primary);
-    -fx-padding: 12 20 12 20;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.18), 8, 0, 0, 2);
+    -fx-background-color: -color-surface;
+    -fx-border-color: transparent transparent -color-border transparent;
+    -fx-padding: 10 20 10 20;
 }
 
 .brand-logo {
-    -fx-background-color: -color-surface;
+    -fx-background-color: -color-primary;
     -fx-background-radius: 10;
-    -fx-min-width: 42px;
-    -fx-min-height: 42px;
-    -fx-max-width: 42px;
-    -fx-max-height: 42px;
+    -fx-min-width: 40px;
+    -fx-min-height: 40px;
+    -fx-max-width: 40px;
+    -fx-max-height: 40px;
 }
 
 .brand-logo-text {
-    -fx-text-fill: -color-primary;
-    -fx-font-size: 22px;
+    -fx-text-fill: white;
+    -fx-font-size: 21px;
     -fx-font-weight: bold;
 }
 
 .app-title {
-    -fx-text-fill: white;
-    -fx-font-size: 19px;
+    -fx-text-fill: -color-text;
+    -fx-font-size: 17px;
     -fx-font-weight: bold;
 }
 
 .app-subtitle {
-    -fx-text-fill: rgba(255, 255, 255, 0.75);
-    -fx-font-size: 12px;
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 11.5px;
 }
 
 .header-date {
-    -fx-text-fill: rgba(255, 255, 255, 0.9);
-    -fx-font-size: 13px;
-}
-
-/* ---------- Sidebar ---------- */
-.sidebar {
-    -fx-background-color: -color-sidebar;
-    -fx-padding: 16 10 16 10;
-    -fx-pref-width: 230px;
-    -fx-min-width: 210px;
-}
-
-.sidebar-section {
-    -fx-text-fill: #7F93AB;
-    -fx-font-size: 11.5px;
-    -fx-font-weight: bold;
-    -fx-padding: 12 10 4 10;
-}
-
-.nav-button {
-    -fx-background-color: transparent;
-    -fx-text-fill: -color-sidebar-text;
-    -fx-font-size: 14px;
-    -fx-alignment: center-left;
-    -fx-padding: 8 14 8 14;
-    -fx-background-radius: 8;
-    -fx-cursor: hand;
-}
-
-.nav-button:hover {
-    -fx-background-color: -color-sidebar-hover;
-    -fx-text-fill: white;
-}
-
-.nav-button-active,
-.nav-button-active:hover {
-    -fx-background-color: -color-primary;
-    -fx-text-fill: white;
-    -fx-font-weight: bold;
-}
-
-.sidebar .separator .line {
-    -fx-border-color: #24476F;
-}
-
-/* ---------- Content ---------- */
-.content-scroll,
-.content-scroll > .viewport {
-    -fx-background-color: -color-bg;
-    -fx-background-insets: 0;
-    -fx-padding: 0;
-}
-
-.page-content {
-    -fx-padding: 26 28 26 28;
-}
-
-.page-title {
-    -fx-font-size: 24px;
-    -fx-font-weight: bold;
-    -fx-text-fill: -color-text;
-}
-
-.page-subtitle {
-    -fx-font-size: 13.5px;
-    -fx-text-fill: -color-text-muted;
-}
-
-/* ---------- Cards ---------- */
-.card {
-    -fx-background-color: -color-surface;
-    -fx-background-radius: 12;
-    -fx-border-color: -color-border;
-    -fx-border-radius: 12;
-    -fx-padding: 18 20 18 20;
-    -fx-effect: dropshadow(gaussian, rgba(15, 42, 71, 0.06), 10, 0, 0, 2);
-}
-
-.card-title {
-    -fx-font-size: 16px;
-    -fx-font-weight: bold;
-}
-
-.kpi-card {
-    -fx-pref-width: 250px;
-    -fx-min-height: 104px;
-    -fx-alignment: center-left;
-    -fx-border-width: 0 4 0 0; /* accent bar on the leading (right) edge in RTL */
-}
-
-.kpi-primary { -fx-border-color: -color-primary; }
-.kpi-success { -fx-border-color: -color-success; }
-.kpi-info    { -fx-border-color: -color-accent; }
-.kpi-warning { -fx-border-color: -color-warning; }
-
-.kpi-title {
     -fx-text-fill: -color-text-muted;
     -fx-font-size: 13px;
 }
 
-.kpi-value {
-    -fx-font-size: 24px;
-    -fx-font-weight: bold;
-}
-
-/* Monetary values (KWD, 3 decimals) */
-.money {
-    -fx-text-fill: -color-primary-dark;
-}
-
-/* ---------- Status indicator ---------- */
-.status-dot.status-ok      { -fx-fill: -color-success; }
-.status-dot.status-error   { -fx-fill: -color-danger; }
-.status-dot.status-pending { -fx-fill: -color-warning; }
-
-.status-title {
-    -fx-font-size: 14.5px;
-    -fx-font-weight: bold;
-}
-
-/* ---------- Buttons ---------- */
-.btn {
-    -fx-background-radius: 8;
-    -fx-padding: 8 18 8 18;
-    -fx-font-size: 13.5px;
-    -fx-cursor: hand;
-}
-
-.btn-primary {
-    -fx-background-color: -color-primary;
-    -fx-text-fill: white;
-}
-
-.btn-primary:hover {
-    -fx-background-color: -color-primary-dark;
-}
-
-.btn-secondary {
-    -fx-background-color: -color-primary-light;
-    -fx-text-fill: -color-primary;
-    -fx-border-color: transparent;
-}
-
-.btn-secondary:hover {
-    -fx-background-color: #D4E3F5;
-}
-
-.btn-danger {
-    -fx-background-color: -color-danger;
-    -fx-text-fill: white;
-}
-
-.btn-danger:hover {
-    -fx-background-color: #B83535;
-}
-
-/* ---------- Form inputs ---------- */
-.text-field,
-.text-area,
-.combo-box,
-.date-picker,
-.password-field {
-    -fx-background-radius: 8;
-    -fx-border-radius: 8;
-    -fx-border-color: -color-border;
-    -fx-background-color: -color-surface;
-    -fx-padding: 7 10 7 10;
-}
-
-.text-field:focused,
-.password-field:focused,
-.text-area:focused,
-.combo-box:focused {
-    -fx-border-color: -color-primary;
-}
-
-/* ---------- Tables ---------- */
-.table-view {
-    -fx-background-color: -color-surface;
-    -fx-border-color: -color-border;
-    -fx-border-radius: 10;
-    -fx-background-radius: 10;
-}
-
-.table-view .column-header-background {
-    -fx-background-color: -color-primary-light;
-    -fx-background-radius: 10 10 0 0;
-}
-
-.table-view .column-header .label {
-    -fx-text-fill: -color-primary-dark;
-    -fx-font-weight: bold;
-}
-
-.table-row-cell:odd {
-    -fx-background-color: #FAFBFD;
-}
-
-.table-row-cell:selected {
-    -fx-background-color: -color-primary;
-}
-
-.table-row-cell:selected .text {
-    -fx-fill: white;
-}
-
-/* ---------- Status bar ---------- */
-.status-bar {
-    -fx-background-color: -color-surface;
-    -fx-border-color: -color-border transparent transparent transparent;
-}
-
-.status-bar .label {
-    -fx-text-fill: -color-text-muted;
-    -fx-font-size: 12px;
-}
-
-/* ---------- Dialogs ---------- */
-.dialog-pane {
-    -fx-background-color: -color-surface;
-}
-
-.dialog-pane > .content.label {
-    -fx-font-size: 14px;
-    -fx-padding: 16;
-}
-
-.kpi-danger  { -fx-border-color: -color-danger; }
-
-/* ==========================================================
-   Header: logged-in user
-   ========================================================== */
 .header-separator .line {
-    -fx-border-color: rgba(255, 255, 255, 0.25);
+    -fx-border-color: -color-border;
+}
+
+.user-chip {
+    -fx-padding: 0 4 0 4;
 }
 
 .user-avatar {
-    -fx-background-color: rgba(255, 255, 255, 0.18);
+    -fx-background-color: -color-primary-light;
     -fx-background-radius: 50%;
     -fx-min-width: 36px;
     -fx-min-height: 36px;
@@ -322,36 +63,102 @@
 }
 
 .user-avatar-text {
-    -fx-text-fill: white;
+    -fx-text-fill: -color-primary;
     -fx-font-size: 16px;
     -fx-font-weight: bold;
 }
 
 .user-name {
-    -fx-text-fill: white;
+    -fx-text-fill: -color-text;
     -fx-font-size: 13.5px;
     -fx-font-weight: bold;
 }
 
 .user-role {
-    -fx-text-fill: rgba(255, 255, 255, 0.75);
+    -fx-text-fill: -color-text-muted;
     -fx-font-size: 11.5px;
 }
 
+/* Top-bar actions: quiet, never competing with the page's own actions */
 .btn-logout {
-    -fx-background-color: rgba(255, 255, 255, 0.12);
-    -fx-text-fill: white;
-    -fx-border-color: rgba(255, 255, 255, 0.35);
-    -fx-border-radius: 8;
+    -fx-background-color: -color-surface;
+    -fx-text-fill: -color-text-secondary;
+    -fx-border-color: -color-border-strong;
     -fx-padding: 6 14 6 14;
+    -fx-font-size: 13px;
 }
 
 .btn-logout:hover {
-    -fx-background-color: -color-danger;
-    -fx-border-color: -color-danger;
+    -fx-background-color: -color-primary-light;
+    -fx-text-fill: -color-primary;
 }
 
-/* Sidebar is scrollable when a role (ADMIN) has many modules */
+.btn-signout:hover {
+    -fx-background-color: -color-danger-bg;
+    -fx-text-fill: -color-danger;
+    -fx-border-color: #F2C4C4;
+}
+
+/* Sidebar (on the right in RTL); entries grouped under section labels */
+.sidebar {
+    -fx-background-color: -color-sidebar;
+    -fx-padding: 10 10 16 10;
+    -fx-pref-width: 228px;
+    -fx-min-width: 210px;
+}
+
+.sidebar-section {
+    -fx-text-fill: -color-sidebar-section;
+    -fx-font-size: 11px;
+    -fx-font-weight: bold;
+    -fx-padding: 10 12 2 12;
+}
+
+.nav-button {
+    -fx-background-color: transparent;
+    -fx-text-fill: -color-sidebar-text;
+    -fx-font-size: 14px;
+    -fx-alignment: center-left;
+    -fx-padding: 6 12 6 12;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-cursor: hand;
+}
+
+.nav-button:hover {
+    -fx-background-color: -color-sidebar-hover;
+    -fx-text-fill: white;
+}
+
+/* Active page: lighter navy + a bar on the leading (right) edge — CSS "left" is mirrored in RTL */
+.nav-button-active,
+.nav-button-active:hover {
+    -fx-background-color: -color-sidebar-active;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-border-color: transparent transparent transparent #5FA8F5;
+    -fx-border-width: 0 0 0 3;
+}
+
+.nav-button:focus-visible {
+    -fx-effect: dropshadow(three-pass-box, rgba(95, 168, 245, 0.6), 4, 0.5, 0, 0);
+}
+
+.nav-icon {
+    -fx-fill: #7F93AB;
+    -fx-scale-x: 0.8;
+    -fx-scale-y: 0.8;
+}
+
+.nav-button:hover .nav-icon,
+.nav-button-active .nav-icon {
+    -fx-fill: white;
+}
+
+.sidebar .separator .line {
+    -fx-border-color: #24476F;
+}
+
 .sidebar-scroll,
 .sidebar-scroll > .viewport {
     -fx-background-color: -color-sidebar;
@@ -369,43 +176,81 @@
     -fx-background-radius: 4;
 }
 
+/* Content */
+.content-area,
+.module-root {
+    -fx-background-color: -color-bg;
+}
+
+.content-scroll,
+.content-scroll > .viewport {
+    -fx-background-color: -color-bg;
+    -fx-background-insets: 0;
+    -fx-padding: 0;
+}
+
+.page-content {
+    -fx-padding: 24 28 24 28;
+}
+
+/* Status bar */
+.status-bar {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border transparent transparent transparent;
+}
+
+.status-bar .label {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 12px;
+}
+
+.status-dot.status-ok      { -fx-fill: -color-success; }
+.status-dot.status-error   { -fx-fill: -color-danger; }
+.status-dot.status-pending { -fx-fill: -color-warning; }
+
+.status-title {
+    -fx-font-size: 14.5px;
+    -fx-font-weight: bold;
+}
+
+.status-card {
+    -fx-padding: 12 18 12 18;
+}
+
 /* ==========================================================
-   Login screen
+   Login, first-run setup, change password
    ========================================================== */
 .login-root {
-    -fx-background-color:
-        radial-gradient(center 15% 10%, radius 60%, rgba(0, 163, 163, 0.22), transparent),
-        linear-gradient(to bottom right, #0F2A47, #0B5394);
+    -fx-background-color: linear-gradient(to bottom right, #0D2440, #0E4C8A);
     -fx-padding: 24;
 }
 
 .login-card {
     -fx-background-color: -color-surface;
-    -fx-background-radius: 18;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.35), 40, 0.1, 0, 12);
+    -fx-background-radius: 16;
+    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.30), 32, 0.08, 0, 10);
 }
 
 .login-brand {
-    -fx-background-color: linear-gradient(to bottom, #0B5394, #073763);
+    -fx-background-color: -color-sidebar;
     /* JavaFX mirrors corner radii under RIGHT_TO_LEFT, so "top-left/bottom-left"
        here are the outer (right-hand) corners on screen */
-    -fx-background-radius: 18 0 0 18;
+    -fx-background-radius: 16 0 0 16;
     -fx-padding: 40 36 32 36;
 }
 
 .login-logo {
     -fx-background-color: white;
-    -fx-background-radius: 16;
-    -fx-min-width: 64px;
-    -fx-min-height: 64px;
-    -fx-max-width: 64px;
-    -fx-max-height: 64px;
-    -fx-effect: dropshadow(gaussian, rgba(0, 0, 0, 0.25), 12, 0, 0, 4);
+    -fx-background-radius: 14;
+    -fx-min-width: 60px;
+    -fx-min-height: 60px;
+    -fx-max-width: 60px;
+    -fx-max-height: 60px;
 }
 
 .login-logo-text {
     -fx-text-fill: -color-primary;
-    -fx-font-size: 34px;
+    -fx-font-size: 32px;
     -fx-font-weight: bold;
 }
 
@@ -429,7 +274,7 @@
 .login-chip {
     -fx-text-fill: white;
     -fx-font-size: 12px;
-    -fx-background-color: rgba(255, 255, 255, 0.14);
+    -fx-background-color: rgba(255, 255, 255, 0.12);
     -fx-background-radius: 20;
     -fx-padding: 4 12 4 12;
 }
@@ -460,133 +305,82 @@
     -fx-text-fill: -color-text-muted;
 }
 
-.field-label {
-    -fx-font-size: 13px;
-    -fx-font-weight: bold;
-    -fx-text-fill: #374151;
-}
-
 .login-input,
 .input-group {
     -fx-pref-height: 42px;
 }
 
-.login-input {
+.login-input,
+.input-group .text-field,
+.input-group .password-field {
     -fx-font-size: 14.5px;
-}
-
-/* Password field + show/hide button rendered as one input */
-.input-group {
-    -fx-background-color: -color-surface;
-    -fx-background-radius: 8;
-    -fx-border-color: -color-border;
-    -fx-border-radius: 8;
-    -fx-alignment: center-left;
-}
-
-.input-group:focus-within {
-    -fx-border-color: -color-primary;
 }
 
 .input-group .text-field,
 .input-group .password-field {
-    -fx-background-color: transparent;
-    -fx-border-color: transparent;
     -fx-pref-height: 40px;
-    -fx-font-size: 14.5px;
 }
 
-.input-addon {
-    -fx-background-color: transparent;
-    -fx-padding: 6 12 6 12;
-    -fx-cursor: hand;
-}
-
-.input-addon-icon {
-    -fx-fill: #9CA3AF;
-    -fx-scale-x: 0.85;
-    -fx-scale-y: 0.85;
-}
-
-.input-addon:hover .input-addon-icon,
-.input-addon:selected .input-addon-icon {
-    -fx-fill: -color-primary;
-}
-
-/* Validation */
-.field-invalid,
-.field-invalid:focused,
-.field-invalid:focus-within {
-    -fx-border-color: -color-danger;
-}
-
-.field-error-text {
-    -fx-text-fill: -color-danger;
+/* Small database status line under the login form */
+.login-status {
+    -fx-text-fill: -color-text-muted;
     -fx-font-size: 12px;
 }
 
-.caps-warning {
-    -fx-text-fill: -color-warning;
-    -fx-font-size: 12px;
-    -fx-font-weight: bold;
+.login-status-dot {
+    -fx-fill: -color-success;
 }
 
-.form-alert {
-    -fx-padding: 10 14 10 14;
-    -fx-background-radius: 8;
-    -fx-border-radius: 8;
-    -fx-font-size: 13px;
+.change-password-root {
+    -fx-background-color: linear-gradient(to bottom right, #0D2440, #0E4C8A);
+    -fx-padding: 24;
 }
 
-.form-alert-error {
-    -fx-background-color: #FDECEC;
-    -fx-border-color: #F5C2C2;
-    -fx-text-fill: #9B2C2C;
-}
-
-.form-alert-info {
-    -fx-background-color: #E8F6EE;
-    -fx-border-color: #BFE3CD;
-    -fx-text-fill: #1E6B40;
-}
-
-.btn-lg {
-    -fx-pref-height: 44px;
-    -fx-font-size: 15px;
-    -fx-font-weight: bold;
-}
-
-.btn-primary:disabled {
-    -fx-opacity: 0.75;
-}
-
-.btn-spinner {
-    -fx-progress-color: white;
-    -fx-pref-width: 18px;
-    -fx-pref-height: 18px;
+.change-password-card {
+    -fx-padding: 28;
 }
 
 /* ==========================================================
    Dashboard
    ========================================================== */
-.nav-icon {
-    -fx-fill: #7F93AB;
-    -fx-scale-x: 0.8;
-    -fx-scale-y: 0.8;
+/* KPI cards: one size, white, the value first; colour only where it means something (icon tint) */
+.kpi-card {
+    -fx-pref-width: 300px;
+    -fx-min-height: 108px;
+    -fx-alignment: center-left;
 }
 
-.nav-button:hover .nav-icon,
-.nav-button-active .nav-icon {
-    -fx-fill: white;
+.kpi-title {
+    -fx-text-fill: -color-text-muted;
+    -fx-font-size: 13px;
 }
 
-/* KPI cards: tinted icon box + accent per tone */
+.kpi-value {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+
+.kpi-card .kpi-value {
+    -fx-font-size: 22px;
+    -fx-text-fill: -color-text;
+}
+
+.kpi-value.negative,
+.kpi-card .kpi-value.negative {
+    -fx-text-fill: -color-danger;
+}
+
+.kpi-caption {
+    -fx-text-fill: -color-text-faint;
+    -fx-font-size: 11.5px;
+}
+
 .kpi-icon-box {
     -fx-background-radius: 12;
-    -fx-min-width: 46px;
-    -fx-min-height: 46px;
-    -fx-max-width: 46px;
-    -fx-max-height: 46px;
+    -fx-min-width: 44px;
+    -fx-min-height: 44px;
+    -fx-max-width: 44px;
+    -fx-max-height: 44px;
 }
 
 .kpi-icon {
@@ -594,54 +388,23 @@
     -fx-scale-y: 0.95;
 }
 
-.kpi-primary .kpi-icon-box { -fx-background-color: #E8F0FA; }
-.kpi-primary .kpi-icon     { -fx-fill: -color-primary; }
-.kpi-success .kpi-icon-box { -fx-background-color: #E6F5EC; }
+.kpi-primary .kpi-icon-box,
+.kpi-info .kpi-icon-box    { -fx-background-color: -color-primary-light; }
+.kpi-primary .kpi-icon,
+.kpi-info .kpi-icon        { -fx-fill: -color-primary; }
+.kpi-success .kpi-icon-box { -fx-background-color: -color-success-bg; }
 .kpi-success .kpi-icon     { -fx-fill: -color-success; }
-.kpi-info .kpi-icon-box    { -fx-background-color: #E0F5F5; }
-.kpi-info .kpi-icon        { -fx-fill: -color-accent; }
-.kpi-warning .kpi-icon-box { -fx-background-color: #FDF3DC; }
+.kpi-warning .kpi-icon-box { -fx-background-color: -color-warning-bg; }
 .kpi-warning .kpi-icon     { -fx-fill: -color-warning; }
-.kpi-danger .kpi-icon-box  { -fx-background-color: #FCE9E9; }
+.kpi-danger .kpi-icon-box  { -fx-background-color: -color-danger-bg; }
 .kpi-danger .kpi-icon      { -fx-fill: -color-danger; }
 
-.kpi-card .kpi-value {
-    -fx-font-size: 21px;
-}
-
-.kpi-caption {
-    -fx-text-fill: #9CA3AF;
-    -fx-font-size: 11.5px;
-}
-
-.kpi-value.negative {
-    -fx-text-fill: -color-danger;
-}
-
-.status-card {
-    -fx-padding: 12 18 12 18;
-}
+/* A card that needs attention (low stock, loss) gets a thin coloured outline */
+.kpi-warning.kpi-card { -fx-border-color: #F0D59A; }
+.kpi-danger.kpi-card  { -fx-border-color: #F2C4C4; }
 
 .dash-section {
     -fx-min-height: 360px;
-}
-
-/* Range selector above the chart */
-.segment {
-    -fx-background-color: #F1F4F8;
-    -fx-text-fill: -color-text-muted;
-    -fx-font-size: 12.5px;
-    -fx-padding: 5 12 5 12;
-    -fx-background-radius: 0;
-    -fx-cursor: hand;
-}
-
-.segmented > .segment:first-child { -fx-background-radius: 0 8 8 0; }   /* RTL: first is on the right */
-.segmented > .segment:last-child  { -fx-background-radius: 8 0 0 8; }
-
-.segment:selected {
-    -fx-background-color: -color-primary;
-    -fx-text-fill: white;
 }
 
 /* Sales chart */
@@ -666,7 +429,7 @@
 }
 
 .sales-chart .axis {
-    -fx-tick-label-fill: #9CA3AF;
+    -fx-tick-label-fill: -color-text-faint;
     -fx-tick-label-font-size: 11px;
 }
 
@@ -676,7 +439,7 @@
 }
 
 .sales-chart .default-color0.chart-series-area-fill {
-    -fx-fill: linear-gradient(to bottom, rgba(11, 83, 148, 0.30), rgba(11, 83, 148, 0.02));
+    -fx-fill: linear-gradient(to bottom, rgba(14, 76, 138, 0.25), rgba(14, 76, 138, 0.02));
 }
 
 .sales-chart .default-color0.chart-area-symbol {
@@ -691,14 +454,10 @@
     -fx-scale-y: 1.6;
 }
 
-/* Dashboard tables */
+/* Dashboard tables: lighter than module tables */
 .dash-table {
     -fx-border-color: transparent;
     -fx-background-color: transparent;
-}
-
-.dash-table .column-header-background {
-    -fx-background-color: #F6F8FB;
 }
 
 .dash-table .table-cell {
@@ -706,7 +465,8 @@
     -fx-font-size: 13px;
 }
 
-.dash-table .table-row-cell {
+.dash-table .table-row-cell,
+.dash-table .table-row-cell:odd {
     -fx-background-color: white;
     -fx-border-color: transparent transparent #F0F2F5 transparent;
 }
@@ -717,45 +477,6 @@
 
 .dash-table .table-row-cell:selected .text {
     -fx-fill: -color-text;
-}
-
-.cell-primary {
-    -fx-font-size: 13px;
-    -fx-text-fill: -color-text;
-}
-
-.cell-secondary {
-    -fx-font-size: 11.5px;
-    -fx-text-fill: #9CA3AF;
-}
-
-.money-cell {
-    -fx-font-weight: bold;
-    -fx-text-fill: -color-primary-dark;
-}
-
-.qty-low {
-    -fx-font-weight: bold;
-    -fx-text-fill: -color-danger;
-}
-
-.badge {
-    -fx-font-size: 11.5px;
-    -fx-padding: 2 9 2 9;
-    -fx-background-radius: 10;
-}
-
-.badge-success { -fx-background-color: #E6F5EC; -fx-text-fill: #1E6B40; }
-.badge-warning { -fx-background-color: #FDF3DC; -fx-text-fill: #8A5A00; }
-.badge-danger  { -fx-background-color: #FCE9E9; -fx-text-fill: #9B2C2C; }
-
-.count-badge {
-    -fx-background-color: #FCE9E9;
-    -fx-text-fill: #9B2C2C;
-    -fx-font-size: 12px;
-    -fx-font-weight: bold;
-    -fx-padding: 1 9 1 9;
-    -fx-background-radius: 10;
 }
 
 /* Best sellers */
@@ -778,7 +499,7 @@
 
 .top-bar {
     -fx-pref-height: 6px;
-    -fx-accent: -color-accent;
+    -fx-accent: -color-primary;
 }
 
 .top-bar .track {
@@ -790,4 +511,453 @@
     -fx-background-radius: 3;
     -fx-background-insets: 0;
     -fx-padding: 3px;
+}
+
+/* ==========================================================
+   Modules: forms, inventory, customers & suppliers, purchases
+   ========================================================== */
+.form-card .text-field,
+.form-card .combo-box,
+.side-form .text-field {
+    -fx-pref-height: 38px;
+}
+
+.form-card .text-area {
+    -fx-padding: 4;
+}
+
+.side-form {
+    -fx-padding: 18 20 18 20;
+}
+
+.preview-text {
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-primary;
+}
+
+.preview-text.preview-negative {
+    -fx-text-fill: -color-danger;
+}
+
+/* Product search suggestions */
+.picker-popup .menu-item {
+    -fx-padding: 6 10 6 10;
+}
+
+.picker-popup .menu-item:focused {
+    -fx-background-color: -color-primary-light;
+}
+
+.picker-popup .menu-item:focused .label {
+    -fx-text-fill: -color-text;
+}
+
+.guide-card {
+    -fx-background-color: -color-surface-alt;
+}
+
+.guide-item {
+    -fx-text-fill: -color-text-secondary;
+    -fx-font-size: 13px;
+    -fx-line-spacing: 2;
+}
+
+/* Figure cards (customer / supplier details): a neutral accent; red / green only for the meaning of a balance */
+.figure-card {
+    -fx-border-width: 0 0 0 4;   /* CSS "left" is the leading (right) edge in RTL */
+    -fx-padding: 16 20 16 20;
+}
+.figure-primary,
+.figure-info    { -fx-border-color: transparent transparent transparent -color-primary; }
+.figure-success { -fx-border-color: transparent transparent transparent -color-success; }
+.figure-danger  { -fx-border-color: transparent transparent transparent -color-danger; }
+
+.balance-due {
+    -fx-text-fill: -color-danger;
+}
+
+.balance-credit {
+    -fx-text-fill: -color-success;
+}
+
+.balance-cell {
+    -fx-font-weight: bold;
+    -fx-alignment: center-left;
+}
+
+/* Purchases / returns lines */
+.lines-table .table-cell {
+    -fx-padding: 3 6 3 6;
+    -fx-alignment: center-left;
+}
+
+.line-input {
+    -fx-padding: 4 8 4 8;
+    -fx-pref-height: 32px;
+}
+
+.totals-card {
+    -fx-background-color: -color-surface-alt;
+}
+
+.total-row {
+    -fx-padding: 4 0 4 0;
+    -fx-alignment: center-left;
+}
+
+.total-value {
+    -fx-font-weight: bold;
+    -fx-font-size: 14.5px;
+}
+
+.total-main {
+    -fx-border-color: -color-border transparent -color-border transparent;
+    -fx-padding: 8 0 8 0;
+}
+
+.total-main .label {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-primary-dark;
+}
+
+.total-value.negative {
+    -fx-text-fill: -color-danger;
+}
+
+/* Sale details: profit row */
+.total-profit .label {
+    -fx-text-fill: -color-success;
+    -fx-font-weight: bold;
+}
+
+.total-profit .total-value.negative {
+    -fx-text-fill: -color-danger;
+}
+
+/* ==========================================================
+   Printable documents (invoice, quotation, purchase, A4 reports)
+   ========================================================== */
+.print-sheet {
+    -fx-background-color: white;
+    -fx-border-color: #CBD2DC;
+    -fx-padding: 32 36 32 36;
+    -fx-effect: dropshadow(gaussian, rgba(16, 24, 40, 0.10), 14, 0, 0, 3);
+}
+
+.print-sheet .label {
+    -fx-text-fill: #111827;
+}
+
+.print-head {
+    -fx-border-color: transparent transparent #0E4C8A transparent;
+    -fx-border-width: 0 0 2 0;
+    -fx-padding: 0 0 12 0;
+}
+
+.print-company {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+}
+
+.print-title {
+    -fx-font-size: 20px;
+    -fx-font-weight: bold;
+}
+
+.print-sheet .print-muted {
+    -fx-text-fill: #6B7280;
+    -fx-font-size: 12px;
+}
+
+.print-sheet .print-warning {
+    -fx-text-fill: #9B2C2C;
+    -fx-font-weight: bold;
+}
+
+.print-sheet .print-label {
+    -fx-text-fill: #6B7280;
+}
+
+.print-value {
+    -fx-font-weight: bold;
+}
+
+.print-lines {
+    -fx-border-color: #CBD2DC;
+}
+
+.print-th {
+    -fx-background-color: #EAF1FA;
+    -fx-font-weight: bold;
+    -fx-padding: 6 8 6 8;
+    -fx-alignment: center;
+}
+
+.print-td {
+    -fx-padding: 6 8 6 8;
+    -fx-border-color: transparent transparent #E5E7EB transparent;
+}
+
+.print-total {
+    -fx-padding: 3 0 3 0;
+}
+
+.print-total-main {
+    -fx-padding: 6 0 6 0;
+    -fx-border-color: #111827 transparent #111827 transparent;
+}
+
+.print-total-main .label {
+    -fx-font-weight: bold;
+    -fx-font-size: 15px;
+}
+
+.print-sheet .print-thanks {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+    -fx-text-fill: #0E4C8A;
+    -fx-padding: 8 0 0 0;
+}
+
+/* ==========================================================
+   Point of sale: search + cart in the centre, checkout panel on the side (always visible)
+   ========================================================== */
+.pos-root {
+    -fx-background-color: -color-bg;
+}
+
+.pos-header {
+    -fx-background-color: -color-surface;
+    -fx-border-color: transparent transparent -color-border transparent;
+    -fx-padding: 8 20 8 20;
+}
+
+.pos-header .page-title {
+    -fx-font-size: 20px;
+}
+
+.pos-segment {
+    -fx-font-size: 14px;
+    -fx-padding: 6 20 6 20;
+}
+
+.pos-cashier {
+    -fx-text-fill: -color-text-muted;
+    -fx-padding: 0 0 0 10;
+}
+
+.pos-main {
+    -fx-padding: 14 14 10 20;
+}
+
+.pos-search {
+    -fx-font-size: 17px;
+    -fx-pref-height: 48px;
+    -fx-background-radius: 10;
+    -fx-border-radius: 10;
+    -fx-border-color: -color-primary;
+    -fx-border-width: 2;
+}
+
+.cart-table .table-row-cell {
+    -fx-cell-size: 50px;
+}
+
+.cart-table .table-cell {
+    -fx-alignment: center-left;
+}
+
+.cart-table .cell-secondary.stock-short {
+    -fx-text-fill: -color-danger;
+    -fx-font-weight: bold;
+}
+
+.qty-input {
+    -fx-alignment: center;
+    -fx-font-weight: bold;
+}
+
+.pos-side-scroll,
+.pos-side-scroll > .viewport {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 0;
+}
+
+.pos-side {
+    -fx-padding: 14 20 8 6;
+}
+
+.pos-card {
+    -fx-padding: 10 14 10 14;
+}
+
+/* Checkout: totals and the main action, pinned to the bottom of the side panel */
+.pos-checkout {
+    -fx-background-color: -color-surface;
+    -fx-border-color: -color-border transparent transparent transparent;
+    -fx-padding: 10 20 12 6;
+}
+
+.pos-checkout-card {
+    -fx-padding: 10 14 10 14;
+}
+
+.pos-customer {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-primary-dark;
+}
+
+.pos-total {
+    -fx-border-color: -color-border transparent -color-border transparent;
+    -fx-padding: 6 0 6 0;
+}
+
+.pos-total .label {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-primary-dark;
+}
+
+.pos-total .pos-total-value {
+    -fx-font-size: 28px;
+    -fx-text-fill: -color-primary;
+}
+
+.pos-total-value.negative,
+.pos-change.negative {
+    -fx-text-fill: -color-danger;
+}
+
+.pos-change {
+    -fx-font-size: 18px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-success;
+}
+
+.pos-complete {
+    -fx-font-size: 18px;
+    -fx-pref-height: 48px;
+}
+
+.pos-done {
+    -fx-background-color: -color-success-bg;
+    -fx-border-color: #9ED7B3;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 8 12 8 12;
+}
+
+.pos-done > .label {
+    -fx-text-fill: -color-success-text;
+    -fx-font-weight: bold;
+}
+
+.pos-confirm {
+    -fx-background-color: -color-danger-bg;
+    -fx-background-radius: 8;
+    -fx-padding: 4 10 4 10;
+}
+
+.pos-override {
+    -fx-background-color: -color-warning-bg;
+    -fx-border-color: #F0C36D;
+    -fx-background-radius: 8;
+    -fx-border-radius: 8;
+    -fx-padding: 10 12 10 12;
+}
+
+.pos-override > .label {
+    -fx-text-fill: -color-warning-text;
+}
+
+.pos-leave .pos-leave-title {
+    -fx-font-weight: bold;
+    -fx-font-size: 14.5px;
+}
+
+.pos-shortcuts {
+    -fx-background-color: -color-surface;
+    -fx-padding: 6 20 6 20;
+    -fx-border-color: -color-border transparent transparent transparent;
+}
+
+.pos-shortcuts .label {
+    -fx-font-size: 12.5px;
+    -fx-text-fill: -color-text-secondary;
+}
+
+/* ==========================================================
+   Reports
+   ========================================================== */
+.report-tiles {
+    -fx-padding: 16 4 16 4;
+}
+
+.report-tile {
+    -fx-alignment: top-right;
+    -fx-cursor: hand;
+    -fx-padding: 14 16 14 16;
+}
+
+.report-tile:hover {
+    -fx-border-color: -color-primary-soft;
+    -fx-background-color: #FBFCFE;
+}
+
+.report-tile-title {
+    -fx-font-size: 15px;
+    -fx-font-weight: bold;
+}
+
+.report-summary {
+    -fx-padding: 10 14 10 14;
+    -fx-min-width: 150;
+}
+
+.report-figure {
+    -fx-font-size: 17px;
+    -fx-font-weight: bold;
+}
+
+.report-figure.negative {
+    -fx-text-fill: -color-danger;
+}
+
+.report-sheet .print-lines {
+    -fx-font-size: 11px;
+}
+
+/* ==========================================================
+   Settings · Users · Backup
+   ========================================================== */
+.tab-body {
+    -fx-padding: 16 2 8 2;
+}
+
+.logo-preview {
+    -fx-background-color: white;
+    -fx-border-color: -color-border;
+    -fx-border-radius: 8;
+    -fx-background-radius: 8;
+    -fx-padding: 6;
+}
+
+/* Restore: the one dangerous area of the backup page */
+.danger-zone {
+    -fx-background-color: -color-danger-bg;
+    -fx-border-color: #F2C4C4;
+    -fx-background-radius: 12;
+    -fx-border-radius: 12;
+    -fx-padding: 16 20 16 20;
+}
+
+.danger-title {
+    -fx-font-size: 15.5px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-danger-text;
 }

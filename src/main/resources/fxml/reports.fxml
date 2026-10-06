@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TabPane?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+
+<!-- Reports module: the reports the user may open, by group; a report opens in place. -->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="pageHost" fx:controller="com.almahwar.controller.ReportsController" styleClass="module-root">
+
+    <VBox fx:id="homePage" styleClass="page-content" spacing="16">
+        <VBox spacing="4">
+            <Label text="التقارير والتحليلات" styleClass="page-title"/>
+            <Label text="تقارير للقراءة فقط من البيانات الفعلية؛ لا يغيّر فتحها أو طباعتها أو تصديرها أي بيانات"
+                   styleClass="page-subtitle" wrapText="true"/>
+        </VBox>
+        <Label fx:id="emptyLabel" text="لا توجد تقارير متاحة لصلاحياتك." styleClass="muted" visible="false" managed="false"/>
+        <TabPane fx:id="categoryTabs" styleClass="module-tabs" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS"/>
+    </VBox>
+</StackPane>

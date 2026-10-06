@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.CheckBox?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.ColumnConstraints?>
+<?import javafx.scene.layout.GridPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import com.almahwar.controller.support.Icon?>
+
+<!-- Add / edit / view a product. Opened in place of the product list by ProductsController. -->
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.almahwar.controller.ProductFormController"
+            fitToWidth="true" styleClass="content-scroll">
+    <VBox styleClass="page-content, product-form" spacing="16">
+
+        <!-- Header -->
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <Button text="رجوع للقائمة" styleClass="btn, btn-secondary, btn-back" onAction="#onBack">
+                <graphic><Icon name="back"/></graphic>
+            </Button>
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <Label fx:id="titleLabel" styleClass="page-title"/>
+                <Label fx:id="subtitleLabel" styleClass="page-subtitle" wrapText="true"/>
+            </VBox>
+            <Label fx:id="statusBadge"/>
+        </HBox>
+
+        <Label fx:id="formAlert" wrapText="true" maxWidth="Infinity" visible="false" managed="false"/>
+
+        <!-- Basic data -->
+        <VBox styleClass="card, form-card" spacing="14">
+            <Label text="البيانات الأساسية" styleClass="card-title"/>
+            <GridPane hgap="18" vgap="12">
+                <columnConstraints>
+                    <ColumnConstraints percentWidth="50"/>
+                    <ColumnConstraints percentWidth="50"/>
+                </columnConstraints>
+                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="0">
+                    <Label text="كود المنتج *" styleClass="field-label"/>
+                    <TextField fx:id="codeField" promptText="مثال: P-1001"/>
+                    <Label fx:id="codeError"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="0">
+                    <Label text="الباركود" styleClass="field-label"/>
+                    <TextField fx:id="barcodeField" promptText="امسح الباركود أو اكتبه (اختياري)"/>
+                    <Label fx:id="barcodeError"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="1">
+                    <Label text="اسم المنتج بالعربي *" styleClass="field-label"/>
+                    <TextField fx:id="nameArField"/>
+                    <Label fx:id="nameArError"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="1">
+                    <Label text="اسم المنتج بالإنجليزي" styleClass="field-label"/>
+                    <TextField fx:id="nameEnField" nodeOrientation="LEFT_TO_RIGHT"/>
+                    <Label fx:id="nameEnError"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="2">
+                    <Label text="القسم *" styleClass="field-label"/>
+                    <ComboBox fx:id="categoryCombo" promptText="اختر القسم" maxWidth="Infinity"/>
+                    <Label fx:id="categoryError"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="1" GridPane.rowIndex="2">
+                    <Label text="الماركة" styleClass="field-label"/>
+                    <ComboBox fx:id="brandCombo" maxWidth="Infinity"/>
+                    <Label fx:id="brandError"/>
+                </VBox>
+                <VBox spacing="5" GridPane.columnIndex="0" GridPane.rowIndex="3">
+                    <Label text="الوحدة *" styleClass="field-label"/>
+                    <ComboBox fx:id="unitCombo" promptText="اختر الوحدة" maxWidth="Infinity"/>
+                    <Label fx:id="unitError"/>
+                </VBox>
+                <HBox spacing="18" GridPane.columnIndex="1" GridPane.rowIndex="3">
+                    <VBox spacing="5" HBox.hgrow="ALWAYS">
+                        <Label text="المقاس" styleClass="field-label"/>
+                        <TextField fx:id="sizeField" promptText='مثال: 1/2" أو 110mm'/>
+                        <Label fx:id="sizeError"/>
+                    </VBox>
+                    <VBox spacing="5" HBox.hgrow="ALWAYS">
+                        <Label text="اللون" styleClass="field-label"/>
+                        <TextField fx:id="colorField"/>
+                        <Label fx:id="colorError"/>
+                    </VBox>
+                </HBox>
+            </GridPane>
+        </VBox>
+
+        <!-- Prices -->
+        <VBox styleClass="card, form-card" spacing="14">
+            <HBox alignment="CENTER_LEFT" spacing="8">
+                <Label text="الأسعار" styleClass="card-title"/>
+                <Label fx:id="currencyLabel" styleClass="muted"/>
+            </HBox>
+            <HBox spacing="18">
+                <VBox fx:id="purchasePriceBox" spacing="5" HBox.hgrow="ALWAYS">
+                    <Label text="سعر الشراء" styleClass="field-label"/>
+                    <TextField fx:id="purchasePriceField" promptText="0.000"/>
+                    <Label fx:id="purchasePriceError"/>
+                </VBox>
+                <VBox spacing="5" HBox.hgrow="ALWAYS">
+                    <Label text="سعر البيع (قطاعي) *" styleClass="field-label"/>
+                    <TextField fx:id="salePriceField" promptText="0.000"/>
+                    <Label fx:id="salePriceError"/>
+                </VBox>
+                <VBox spacing="5" HBox.hgrow="ALWAYS">
+                    <Label text="سعر الجملة" styleClass="field-label"/>
+                    <TextField fx:id="wholesalePriceField" promptText="0.000"/>
+                    <Label fx:id="wholesalePriceError"/>
+                </VBox>
+            </HBox>
+            <Label fx:id="marginLabel" styleClass="muted"/>
+        </VBox>
+
+        <!-- Stock -->
+        <VBox styleClass="card, form-card" spacing="14">
+            <Label text="المخزون" styleClass="card-title"/>
+            <HBox spacing="18">
+                <VBox spacing="5" HBox.hgrow="ALWAYS">
+                    <Label fx:id="quantityLabel" text="الكمية الافتتاحية" styleClass="field-label"/>
+                    <TextField fx:id="quantityField" promptText="0"/>
+                    <Label fx:id="quantityError"/>
+                </VBox>
+                <VBox spacing="5" HBox.hgrow="ALWAYS">
+                    <Label text="الحد الأدنى للمخزون" styleClass="field-label"/>
+                    <TextField fx:id="minimumField" promptText="0"/>
+                    <Label fx:id="minimumError"/>
+                </VBox>
+                <VBox spacing="5" HBox.hgrow="ALWAYS">
+                    <Label text="مكان التخزين" styleClass="field-label"/>
+                    <TextField fx:id="locationField" promptText="مثال: رف A-3"/>
+                    <Label fx:id="locationError"/>
+                </VBox>
+            </HBox>
+            <Label fx:id="quantityHint" styleClass="muted" wrapText="true"/>
+        </VBox>
+
+        <!-- Notes & status -->
+        <VBox styleClass="card, form-card" spacing="12">
+            <Label text="ملاحظات وحالة المنتج" styleClass="card-title"/>
+            <TextArea fx:id="notesArea" prefRowCount="3" wrapText="true"/>
+            <Label fx:id="notesError"/>
+            <CheckBox fx:id="activeCheck" text="المنتج نشط (يظهر في البحث والبيع)" selected="true"/>
+            <HBox fx:id="recordInfo" spacing="24">
+                <Label fx:id="createdLabel" styleClass="muted"/>
+                <Label fx:id="updatedLabel" styleClass="muted"/>
+            </HBox>
+        </VBox>
+
+        <!-- Actions -->
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Button fx:id="saveButton" text="حفظ المنتج" styleClass="btn, btn-primary, btn-lg" onAction="#onSave">
+                <graphic><Icon name="save"/></graphic>
+            </Button>
+            <Button fx:id="editButton" text="تعديل" styleClass="btn, btn-primary, btn-lg" onAction="#onSwitchToEdit">
+                <graphic><Icon name="edit"/></graphic>
+            </Button>
+            <Button text="إلغاء" styleClass="btn, btn-secondary, btn-lg" onAction="#onBack"/>
+            <Region HBox.hgrow="ALWAYS"/>
+        </HBox>
+    </VBox>
+</ScrollPane>

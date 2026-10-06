@@ -2,6 +2,9 @@ package com.almahwar.controller;
 
 import com.almahwar.config.AppConfig;
 import com.almahwar.config.AppContext;
+import com.almahwar.model.DatabaseHealth;
+import com.almahwar.model.DatabaseHealth.Status;
+import com.almahwar.service.HealthCheckService;
 import com.almahwar.service.AuthService;
 import com.almahwar.service.AuthenticationException;
 import com.almahwar.service.CredentialPolicy;
@@ -39,7 +42,11 @@ public class LoginController {
     private static final String EYE_OFF = "M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z";
 
     private static final String DB_ERROR_HINT =
-            "تأكد من تشغيل SQL Server ومن صحة إعدادات الاتصال في ملف application.properties، ثم أعد المحاولة.";
+            "تأكد من تشغيل SQL Server ومن صحة إعدادات الاتصال (config/application.properties بجانب البرنامج، أو متغيرات"
+                    + " البيئة ALMAHWAR_DB_...)، ثم أعد المحاولة.";
+    private static final String DB_NOT_CONFIGURED =
+            "اضبط الإعدادات في الملف config/application.properties بجانب البرنامج، أو في متغيرات البيئة"
+                    + " (ALMAHWAR_DB_HOST، ALMAHWAR_DB_USER، ALMAHWAR_DB_PASSWORD …)، ثم أعد المحاولة.";
 
     @FXML private Label brandTitleLabel;
     @FXML private Label brandSubtitleLabel;
@@ -47,11 +54,14 @@ public class LoginController {
 
     @FXML private VBox loadingPane;
     @FXML private VBox dbErrorPane;
+    @FXML private Label dbErrorTitle;
     @FXML private Label dbErrorLabel;
     @FXML private VBox loginPane;
     @FXML private VBox setupPane;
 
     @FXML private Label messageLabel;
+    @FXML private javafx.scene.layout.HBox loginStatusBox;
+    @FXML private Label loginStatusLabel;
     @FXML private TextField usernameField;
     @FXML private Label usernameError;
     @FXML private PasswordField passwordField;
@@ -72,6 +82,7 @@ public class LoginController {
     @FXML private Button setupButton;
 
     private final AuthService authService = AppContext.get().auth();
+    private final HealthCheckService health = AppContext.get().health();
 
     /** Message passed by {@link Navigator} (logout, session timeout), shown once the form appears. */
     private String pendingInfo;
@@ -81,7 +92,7 @@ public class LoginController {
         AppConfig cfg = AppConfig.getInstance();
         brandTitleLabel.setText(cfg.appName());
         brandSubtitleLabel.setText(cfg.appNameEn());
-        versionLabel.setText("الإصدار " + cfg.appVersion() + "  •  الكويت");
+        versionLabel.setText("الإصدار " + ViewSupport.ltr(cfg.appVersion()) + "  •  الكويت");
 
         // Both forms have a default button; only the visible one may react to Enter
         loginButton.defaultButtonProperty().bind(loginPane.visibleProperty());
@@ -110,19 +121,28 @@ public class LoginController {
         }
     }
 
-    // ---------- Startup: is the database reachable, and are there users? ----------
+    // ---------- Startup: the database health check (read only), then login or first-run setup ----------
 
     private void checkUsers() {
         showPane(loadingPane);
-        Task<Boolean> task = new Task<>() {
+        Task<DatabaseHealth> task = new Task<>() {
             @Override
-            protected Boolean call() {
-                return authService.hasUsers();
+            protected DatabaseHealth call() {
+                return health.check();
             }
         };
         task.setOnSucceeded(e -> {
-            if (task.getValue()) {
+            DatabaseHealth h = task.getValue();
+            if (!h.canStart()) {
+                showDatabaseProblem(h);
+            } else if (h.usersExist()) {
                 showLoginPane();
+                // a small, quiet confirmation that the database answered (schema version, no server details)
+                loginStatusLabel.setText("قاعدة البيانات متصلة  •  المخطط " + ViewSupport.ltr(h.schemaVersion()));
+                setShown(loginStatusBox, true);
+                if (h.status() == Status.NO_ACTIVE_ADMIN) {
+                    showMessage(messageLabel, h.message(), true);
+                }
             } else {
                 showPane(setupPane);
                 Platform.runLater(setupFullNameField::requestFocus);
@@ -130,10 +150,29 @@ public class LoginController {
         });
         task.setOnFailed(e -> {
             LOG.log(Level.WARNING, "Database check failed", task.getException());
+            dbErrorTitle.setText("تعذّر الاتصال بقاعدة البيانات");
             dbErrorLabel.setText(DB_ERROR_HINT);
             showPane(dbErrorPane);
         });
         runInBackground(task, "login-db-check");
+    }
+
+    /** The program cannot be used with this database: say why (never a user name, password or SQL detail). */
+    private void showDatabaseProblem(DatabaseHealth h) {
+        boolean connection = h.status() == Status.SERVER_UNREACHABLE || h.status() == Status.LOGIN_FAILED;
+        dbErrorTitle.setText(connection || h.status() == Status.CONFIGURATION_ERROR
+                ? "تعذّر الاتصال بقاعدة البيانات" : "قاعدة البيانات غير جاهزة للبرنامج");
+        StringBuilder text = new StringBuilder(h.message());
+        for (String d : h.details()) {
+            text.append("\n• ").append(d);
+        }
+        if (h.status() == Status.CONFIGURATION_ERROR && !h.details().isEmpty()) {
+            text.append("\n\n").append(DB_NOT_CONFIGURED);
+        } else if (connection || h.status() == Status.CONFIGURATION_ERROR) {
+            text.append("\n\n").append(DB_ERROR_HINT);
+        }
+        dbErrorLabel.setText(text.toString());
+        showPane(dbErrorPane);
     }
 
     @FXML

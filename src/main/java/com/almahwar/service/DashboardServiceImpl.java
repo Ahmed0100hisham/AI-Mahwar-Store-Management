@@ -26,8 +26,8 @@ import static com.almahwar.model.Permission.*;
 public class DashboardServiceImpl implements DashboardService {
 
     private static final Set<Permission> LOW_STOCK_LIST = EnumSet.of(INVENTORY, PRODUCTS);
-    private static final Set<Permission> SALES_SECTIONS = EnumSet.of(SALES, FINANCIAL_REPORTS);
-    private static final Set<Permission> TOP_PRODUCTS = EnumSet.of(SALES, FINANCIAL_REPORTS, INVENTORY);
+    private static final Set<Permission> SALES_SECTIONS = EnumSet.of(SALES_VIEW, FINANCIAL_REPORTS);
+    private static final Set<Permission> TOP_PRODUCTS = EnumSet.of(SALES_VIEW, FINANCIAL_REPORTS, INVENTORY);
 
     private final DashboardDao dashboardDao;
     private final SecurityContext security;
@@ -97,8 +97,9 @@ public class DashboardServiceImpl implements DashboardService {
 
     private static MetricValue value(Metric m, DashboardStats s) {
         return switch (m) {
-            case TODAY_SALES -> new MetricValue(m, s.todaySales(), s.yesterdaySales());
-            case MONTH_SALES -> new MetricValue(m, s.monthSales(), null);
+            case TODAY_SALES -> new MetricValue(m, s.todayNetSales(), s.yesterdayNetSales(), s.todaySales(),
+                    s.todayReturns());
+            case MONTH_SALES -> new MetricValue(m, s.monthNetSales(), null, s.monthSales(), s.monthReturns());
             case TODAY_INVOICES -> new MetricValue(m, BigDecimal.valueOf(s.todayInvoices()), null);
             case NET_PROFIT -> new MetricValue(m, s.monthNetProfit(), null);
             case EXPENSES -> new MetricValue(m, s.monthExpenses(), null);

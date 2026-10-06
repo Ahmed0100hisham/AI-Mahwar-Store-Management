@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.DatePicker?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.FlowPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.VBox?>
+<?import com.almahwar.controller.support.Icon?>
+
+<!-- New sales / purchase return: 1) pick the posted original invoice, 2) quantities, reason, refund method. -->
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.almahwar.controller.ReturnFormController" fitToWidth="true" styleClass="content-scroll">
+    <VBox styleClass="page-content" spacing="16">
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <Button text="رجوع" styleClass="btn, btn-secondary, btn-back" onAction="#onCancel">
+                <graphic><Icon name="back"/></graphic>
+            </Button>
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <Label fx:id="titleLabel" styleClass="page-title"/>
+                <Label fx:id="subtitleLabel" styleClass="page-subtitle" wrapText="true"/>
+            </VBox>
+        </HBox>
+
+        <Label fx:id="formAlert" wrapText="true" maxWidth="Infinity" visible="false" managed="false"/>
+
+        <!-- Step 1: the original invoice -->
+        <VBox fx:id="pickCard" styleClass="card, module-card" spacing="12">
+            <Label fx:id="pickTitle" styleClass="card-title"/>
+            <FlowPane styleClass="filter-bar" hgap="10" vgap="8">
+                <TextField fx:id="pickSearch" promptText="رقم الفاتورة أو العميل / المورد" prefWidth="240"/>
+                <Label text="من" styleClass="muted"/>
+                <DatePicker fx:id="pickFrom" prefWidth="135"/>
+                <Label text="إلى" styleClass="muted"/>
+                <DatePicker fx:id="pickTo" prefWidth="135"/>
+            </FlowPane>
+            <TableView fx:id="originalsTable" prefHeight="360" styleClass="originals-table">
+                <columns>
+                    <TableColumn fx:id="origNoColumn" text="رقم الفاتورة" prefWidth="130"/>
+                    <TableColumn minWidth="150" fx:id="origDateColumn" text="التاريخ" prefWidth="140"/>
+                    <TableColumn fx:id="origPartyColumn" text="العميل / المورد" prefWidth="220"/>
+                    <TableColumn fx:id="origTotalColumn" text="الإجمالي" prefWidth="100"/>
+                    <TableColumn fx:id="origPaidColumn" text="المدفوع" prefWidth="100"/>
+                </columns>
+            </TableView>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="انقر مرتين على الفاتورة أو اخترها ثم اضغط متابعة." styleClass="muted"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="pickButton" text="متابعة" styleClass="btn, btn-primary" onAction="#onPick"/>
+            </HBox>
+        </VBox>
+
+        <!-- Step 2: what comes back -->
+        <VBox fx:id="linesCard" styleClass="card, form-card" spacing="12" visible="false" managed="false">
+            <HBox alignment="CENTER_LEFT" spacing="10">
+                <Label fx:id="originalLabel" styleClass="card-title" HBox.hgrow="ALWAYS" maxWidth="Infinity" wrapText="true"/>
+                <Button fx:id="changeButton" text="تغيير الفاتورة" styleClass="btn, btn-secondary" onAction="#onChangeOriginal"/>
+            </HBox>
+            <TableView fx:id="linesTable" prefHeight="300" styleClass="return-lines">
+                <columns>
+                    <TableColumn fx:id="productColumn" text="الصنف" prefWidth="210" sortable="false"/>
+                    <TableColumn fx:id="unitColumn" text="الوحدة" prefWidth="60" sortable="false"/>
+                    <TableColumn fx:id="soldColumn" text="الكمية الأصلية" prefWidth="95" sortable="false"/>
+                    <TableColumn fx:id="returnedColumn" text="مرتجع سابقًا" prefWidth="90" sortable="false"/>
+                    <TableColumn fx:id="remainingColumn" text="المتبقي" prefWidth="80" sortable="false"/>
+                    <TableColumn fx:id="priceColumn" text="سعر الوحدة" prefWidth="90" sortable="false"/>
+                    <TableColumn fx:id="qtyColumn" text="كمية المرتجع" prefWidth="110" sortable="false"/>
+                    <TableColumn fx:id="amountColumn" text="القيمة" prefWidth="95" sortable="false"/>
+                </columns>
+            </TableView>
+            <Label fx:id="linesError"/>
+            <HBox spacing="16">
+                <VBox spacing="10" HBox.hgrow="ALWAYS">
+                    <HBox spacing="12">
+                        <VBox spacing="5" HBox.hgrow="ALWAYS">
+                            <Label text="سبب الإرجاع *" styleClass="field-label"/>
+                            <ComboBox fx:id="reasonCombo" maxWidth="Infinity" promptText="اختر السبب"/>
+                            <Label fx:id="reasonError"/>
+                        </VBox>
+                        <VBox spacing="5" HBox.hgrow="ALWAYS">
+                            <Label fx:id="methodCaption" styleClass="field-label"/>
+                            <ComboBox fx:id="methodCombo" maxWidth="Infinity"/>
+                            <Label fx:id="methodError"/>
+                        </VBox>
+                    </HBox>
+                    <Label text="ملاحظات" styleClass="field-label"/>
+                    <TextField fx:id="notesField"/>
+                    <Label fx:id="notesError"/>
+                </VBox>
+                <VBox styleClass="totals-card" spacing="6" minWidth="330" prefWidth="350">
+                    <HBox styleClass="total-row, total-main"><Label text="قيمة المرتجع"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="valueLabel" styleClass="total-value"/></HBox>
+                    <HBox styleClass="total-row"><Label fx:id="accountCaption"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="accountLabel" styleClass="total-value"/></HBox>
+                    <HBox styleClass="total-row"><Label fx:id="refundCaption"/><Region HBox.hgrow="ALWAYS"/><Label fx:id="refundLabel" styleClass="total-value"/></HBox>
+                    <Label fx:id="planHint" styleClass="muted" wrapText="true"/>
+                </VBox>
+            </HBox>
+            <HBox spacing="10">
+                <Button fx:id="saveButton" text="اعتماد المرتجع" styleClass="btn, btn-primary, btn-lg" onAction="#onSave"/>
+                <Button text="إلغاء" styleClass="btn, btn-secondary, btn-lg" onAction="#onCancel"/>
+            </HBox>
+        </VBox>
+    </VBox>
+</ScrollPane>

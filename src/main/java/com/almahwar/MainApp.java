@@ -2,6 +2,8 @@ package com.almahwar;
 
 import com.almahwar.config.AppConfig;
 import com.almahwar.config.AppContext;
+import com.almahwar.config.AppLogging;
+import com.almahwar.controller.support.AlertUtil;
 import com.almahwar.service.AuthService;
 import com.almahwar.controller.support.Navigator;
 import com.almahwar.controller.support.ViewLoader;
@@ -13,11 +15,18 @@ import javafx.stage.Screen;
 import javafx.stage.Stage;
 
 import java.util.Locale;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * JavaFX entry point for نظام إدارة شركة المحور.
  */
 public class MainApp extends Application {
+
+    private static final Logger LOG = Logger.getLogger(MainApp.class.getName());
+    private static final long ALERT_INTERVAL_MS = 3000;
+    private static volatile long lastAlert;
+    private static volatile boolean alerting;
 
     @Override
     public void init() {
@@ -51,14 +60,58 @@ public class MainApp extends Application {
     /** Records the logout in the audit log if the window is closed while logged in. */
     @Override
     public void stop() {
+        LOG.info("Shutting down");
         try {
             AppContext.get().auth().logout(AuthService.LogoutReason.APP_EXIT);
-        } catch (RuntimeException ignored) {
+        } catch (RuntimeException e) {
             // the database may be unreachable at shutdown; nothing else to do
+            LOG.log(Level.WARNING, "Logout at shutdown failed", e);
         }
+        LOG.info("Stopped");
     }
 
     public static void main(String[] args) {
+        // Apache POI (Excel export) logs through log4j-api without an implementation: use its simple logger
+        // (errors only) instead of the "could not find a logging implementation" warning on the console
+        System.setProperty("log4j2.loggerContextFactory", "org.apache.logging.log4j.simple.SimpleLoggerContextFactory");
+        AppLogging.init();
+        Thread.setDefaultUncaughtExceptionHandler(MainApp::uncaught);
+        AppConfig cfg = AppConfig.getInstance();
+        LOG.info("Starting " + cfg.appNameEn() + " " + cfg.appVersion() + " (Java " + System.getProperty("java.version")
+                + ", " + System.getProperty("os.name") + "); log folder: " + AppLogging.directory());
         launch(args);
+    }
+
+    /**
+     * Last line of defence for errors nothing else caught: the technical details go to the application log, the
+     * user gets one safe Arabic message (at most every few seconds, never a stack trace), and the program goes on.
+     */
+    static void uncaught(Thread thread, Throwable error) {
+        LOG.log(Level.SEVERE, "Unexpected error on thread " + thread.getName(), error);
+        long now = System.currentTimeMillis();
+        if (alerting || now - lastAlert < ALERT_INTERVAL_MS) {
+            return;
+        }
+        lastAlert = now;
+        Runnable show = () -> {
+            alerting = true;
+            try {
+                AlertUtil.error("خطأ غير متوقع", "حدث خطأ غير متوقع ولم تكتمل العملية. سُجّلت التفاصيل التقنية في سجل"
+                        + " البرنامج. إن تكرر الخطأ فأعد تشغيل البرنامج أو تواصل مع الدعم الفني.");
+            } catch (RuntimeException ignored) {
+                // the window may be closing
+            } finally {
+                alerting = false;
+            }
+        };
+        try {
+            if (javafx.application.Platform.isFxApplicationThread()) {
+                show.run();
+            } else {
+                javafx.application.Platform.runLater(show);
+            }
+        } catch (IllegalStateException toolkitNotRunning) {
+            // before start / after exit: the log has it
+        }
     }
 }

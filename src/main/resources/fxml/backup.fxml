@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ProgressIndicator?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.Region?>
+<?import javafx.scene.layout.StackPane?>
+<?import javafx.scene.layout.VBox?>
+<?import com.almahwar.controller.support.Icon?>
+
+<!-- Backup & restore (admin): create, history, verify, restore (restore asks for the database name typed in). -->
+<StackPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+           fx:id="pageHost" fx:controller="com.almahwar.controller.BackupController" styleClass="module-root">
+
+    <VBox fx:id="page" styleClass="page-content" spacing="16">
+        <HBox alignment="CENTER_LEFT" spacing="12">
+            <VBox spacing="4" HBox.hgrow="ALWAYS">
+                <Label text="النسخ الاحتياطي والاستعادة" styleClass="page-title"/>
+                <Label text="نسخة كاملة من قاعدة البيانات يكتبها خادم SQL Server بنفسه في مجلد على جهاز الخادم؛ لا تُحذف أي نسخة تلقائيًا"
+                       styleClass="page-subtitle" wrapText="true"/>
+            </VBox>
+            <Button fx:id="createButton" text="إنشاء نسخة احتياطية" styleClass="btn, btn-primary" onAction="#onCreate">
+                <graphic><Icon name="backup"/></graphic>
+            </Button>
+        </HBox>
+
+        <HBox fx:id="busyBox" minHeight="-Infinity" spacing="10" alignment="CENTER_LEFT" styleClass="form-alert, form-alert-info"
+              visible="false" managed="false">
+            <ProgressIndicator fx:id="busyIndicator" prefWidth="22" prefHeight="22"/>
+            <Label fx:id="busyLabel" wrapText="true"/>
+        </HBox>
+        <Label fx:id="messageLabel" minHeight="-Infinity" wrapText="true" maxWidth="Infinity" visible="false" managed="false"/>
+
+        <VBox spacing="6" minHeight="-Infinity" styleClass="card, module-card">
+            <Label text="الإعدادات" styleClass="card-title"/>
+            <HBox spacing="8"><Label text="قاعدة البيانات:" styleClass="muted"/><Label fx:id="databaseLabel" styleClass="info-value"/></HBox>
+            <HBox spacing="8"><Label text="مجلد النسخ على خادم SQL Server:" styleClass="muted"/><Label fx:id="directoryLabel" styleClass="info-value" wrapText="true"/></HBox>
+            <Label text="المسار كما يراه خادم SQL Server (على جهاز الخادم)، وليس بالضرورة مجلدًا على هذا الجهاز. يُضبط في إعدادات البرنامج (backup.server-directory) ولا يُكتب من هنا."
+                   styleClass="muted" wrapText="true"/>
+            <Label fx:id="settingsProblemLabel" minHeight="-Infinity" wrapText="true" maxWidth="Infinity" visible="false" managed="false"
+                   styleClass="form-alert, form-alert-error"/>
+        </VBox>
+
+        <VBox fx:id="restorePane" minHeight="-Infinity" spacing="10" styleClass="danger-zone" visible="false" managed="false">
+            <Label text="استعادة قاعدة البيانات — عملية خطيرة" styleClass="danger-title"/>
+            <Label fx:id="restoreDetailsLabel" minHeight="-Infinity" wrapText="true"/>
+            <Label minHeight="-Infinity" wrapText="true" text="• ستُستبدل قاعدة البيانات بالكامل بمحتوى هذه النسخة: كل ما أُدخل بعد تاريخها (مبيعات، مشتريات، حركات مخزون وخزنة، مستخدمون وكلمات مرور) سيختفي.&#10;• يتحقق البرنامج من النسخة أولًا، ثم يأخذ نسخة وقائية تلقائية من الوضع الحالي؛ إن فشل أيٌّ منهما فلن تتم الاستعادة.&#10;• تُقطع اتصالات الأجهزة الأخرى بقاعدة البيانات أثناء الاستعادة.&#10;• بعد الاستعادة تنتهي جلستك ويلزم تسجيل الدخول من جديد."/>
+            <Label fx:id="confirmHintLabel" minHeight="-Infinity" wrapText="true"/>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <TextField fx:id="confirmField" prefWidth="240"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="cancelRestoreButton" text="إلغاء" styleClass="btn, btn-secondary" onAction="#onCancelRestore"/>
+                <Button fx:id="confirmRestoreButton" text="استعادة الآن" styleClass="btn, btn-danger" onAction="#onConfirmRestore">
+                    <graphic><Icon name="restore"/></graphic>
+                </Button>
+            </HBox>
+            <Label fx:id="confirmError" minHeight="-Infinity" wrapText="true" visible="false" managed="false"/>
+        </VBox>
+
+        <VBox spacing="12" styleClass="card, module-card" VBox.vgrow="ALWAYS">
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Label text="سجل النسخ الاحتياطية" styleClass="card-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label fx:id="countLabel" styleClass="muted"/>
+            </HBox>
+            <TableView fx:id="historyTable" VBox.vgrow="ALWAYS" prefHeight="420" minHeight="160">
+                <columns>
+                    <TableColumn minWidth="150" fx:id="createdColumn" text="التاريخ" prefWidth="140"/>
+                    <TableColumn fx:id="fileColumn" text="الملف" prefWidth="270"/>
+                    <TableColumn fx:id="kindColumn" text="النوع" prefWidth="120"/>
+                    <TableColumn fx:id="userColumn" text="المستخدم" prefWidth="100"/>
+                    <TableColumn fx:id="statusColumn" text="الحالة" prefWidth="100"/>
+                    <TableColumn fx:id="verifyColumn" text="التحقق" prefWidth="110"/>
+                    <TableColumn fx:id="verifiedAtColumn" text="وقت التحقق" prefWidth="140"/>
+                    <TableColumn fx:id="sizeColumn" text="الحجم" prefWidth="90"/>
+                    <TableColumn fx:id="noteColumn" text="ملاحظات" prefWidth="220"/>
+                </columns>
+            </TableView>
+            <HBox spacing="10" alignment="CENTER_LEFT">
+                <Button fx:id="refreshButton" text="تحديث" styleClass="btn, btn-secondary" onAction="#onRefresh">
+                    <graphic><Icon name="refresh"/></graphic>
+                </Button>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Button fx:id="verifyButton" text="التحقق من النسخة" styleClass="btn, btn-secondary" onAction="#onVerify">
+                    <graphic><Icon name="verified"/></graphic>
+                </Button>
+                <Button fx:id="restoreButton" text="استعادة من هذه النسخة…" styleClass="btn, btn-danger" onAction="#onRestore">
+                    <graphic><Icon name="restore"/></graphic>
+                </Button>
+            </HBox>
+        </VBox>
+    </VBox>
+</StackPane>
