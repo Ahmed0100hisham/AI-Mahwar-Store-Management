@@ -1,6 +1,5 @@
 package com.almahwar.dao;
 
-import com.almahwar.config.DatabaseConnection;
 
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -27,7 +26,7 @@ public final class TransactionManager {
     }
 
     public static <T> T inTransaction(TransactionWork<T> work) {
-        try (Connection con = DatabaseConnection.getConnection()) {
+        try (Connection con = ConnectionSource.open()) {
             con.setAutoCommit(false);
             try {
                 T result = work.execute(con);
