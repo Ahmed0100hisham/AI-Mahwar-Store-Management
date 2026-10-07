@@ -3,16 +3,13 @@ package com.almahwar.api.auth;
 import com.almahwar.api.audit.AuditLogRepository;
 import com.almahwar.api.auth.AuthUserRepository.LoginFailure;
 import com.almahwar.api.auth.AuthUserRepository.LoginRow;
-import com.almahwar.api.auth.dto.CurrentUserResponse;
 import com.almahwar.api.auth.dto.LoginResponse;
 import com.almahwar.api.error.ApiException;
 import com.almahwar.api.error.ErrorCode;
-import com.almahwar.api.security.ApiUser;
 import com.almahwar.util.PasswordHasher;
 import com.almahwar.model.Permission;
 import com.almahwar.service.RolePermissions;
-import com.almahwar.api.security.TokenService;
-import com.almahwar.api.security.TokenService.IssuedToken;
+import com.almahwar.api.session.SessionService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -48,18 +45,18 @@ public class AuthService {
     private final AuthUserRepository users;
     private final AuditLogRepository audit;
     private final LoginAttemptTracker tracker;
-    private final TokenService tokens;
+    private final SessionService sessions;
     private final Semaphore hashing = new Semaphore(MAX_CONCURRENT_HASHES, true);
 
     /** Checked when the username does not exist, so both paths cost the same. */
     private volatile String dummyHash;
 
     public AuthService(AuthUserRepository users, AuditLogRepository audit, LoginAttemptTracker tracker,
-                       TokenService tokens) {
+                       SessionService sessions) {
         this.users = users;
         this.audit = audit;
         this.tracker = tracker;
-        this.tokens = tokens;
+        this.sessions = sessions;
     }
 
     /**
@@ -67,13 +64,17 @@ public class AuthService {
      * @throws ApiException INVALID_CREDENTIALS, ACCOUNT_LOCKED, ACCOUNT_DISABLED, NO_PERMISSIONS, TOO_MANY_REQUESTS
      */
     public LoginResponse login(String username, char[] password, String clientAddress) {
+        return login(username,password,clientAddress,null);
+    }
+
+    public LoginResponse login(String username, char[] password, String clientAddress, String deviceLabel) {
         try {
             if (username == null || username.isBlank() || password == null || password.length == 0) {
                 throw new ApiException(ErrorCode.VALIDATION_ERROR, "أدخل اسم المستخدم وكلمة المرور.");
             }
             acquireHashingSlot();
             try {
-                return doLogin(username.trim(), password, clientAddress);
+                return doLogin(username.trim(), password, clientAddress, deviceLabel);
             } finally {
                 hashing.release();
             }
@@ -82,7 +83,8 @@ public class AuthService {
         }
     }
 
-    private LoginResponse doLogin(String name, char[] password, String client) {
+    private LoginResponse doLogin(String name, char[] password, String client, String label) {
+        SessionService.safeLabel(label);
         Optional<LoginRow> found = users.findForLogin(name);
         if (found.isEmpty()) {
             long locked = tracker.secondsLocked(name);
@@ -130,19 +132,19 @@ public class AuthService {
         if (user.failedLoginAttempts() > 0 || user.hasLockedUntil()) {
             users.resetFailedLogins(user.userId());
         }
-        if (PasswordHasher.needsRehash(user.passwordHash())) {
-            users.updatePasswordHash(user.userId(), PasswordHasher.hash(password));
+        String expectedHash = user.passwordHash();
+        if (PasswordHasher.needsRehash(expectedHash)) {
+            String upgraded = PasswordHasher.hash(password);
+            if (!users.upgradePasswordHash(user.userId(),expectedHash,upgraded)) throw invalidCredentials();
+            expectedHash = upgraded;
         }
         users.updateLastLogin(user.userId());
+        LoginResponse response = sessions.login(user,expectedHash,label);
         audit.logQuietly(user.userId(), AuditLogRepository.LOGIN, null, null, "تسجيل دخول - " + user.roleName()
                 + (user.mustChangePassword() ? " (مطلوب تغيير كلمة المرور قبل المتابعة)" : ""), client);
 
-        IssuedToken token = tokens.issue(user.userId(), user.passwordChangedAt());
-        ApiUser apiUser = new ApiUser(user.userId(), user.username(), user.fullName(), user.roleCode(), user.roleName(),
-                user.mustChangePassword(), user.mustChangePassword() ? Set.of() : rolePermissions, null);
         LOG.info("Login: user {} ({})", user.userId(), user.roleCode());
-        return new LoginResponse(token.value(), "Bearer", token.expiresInSeconds(), token.expiresAt(),
-                user.mustChangePassword(), CurrentUserResponse.of(apiUser));
+        return response;
     }
 
     private void acquireHashingSlot() {

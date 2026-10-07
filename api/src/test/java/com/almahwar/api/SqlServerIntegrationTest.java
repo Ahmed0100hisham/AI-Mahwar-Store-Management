@@ -38,7 +38,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  */
 @EnabledIfSystemProperty(named = "almahwar.it", matches = "true")
 @SpringBootTest
+@org.springframework.test.context.ActiveProfiles("dev")
 @AutoConfigureMockMvc
+@org.springframework.test.annotation.DirtiesContext(classMode=org.springframework.test.annotation.DirtiesContext.ClassMode.AFTER_CLASS)
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class SqlServerIntegrationTest {
 
@@ -98,13 +100,13 @@ class SqlServerIntegrationTest {
     void realHttpServerStartsWithoutJavafxAndServesHealthReadinessAndProducts() throws Exception {
         try (var context = new SpringApplicationBuilder(AlMahwarApiApplication.class).web(WebApplicationType.SERVLET)
                 .logStartupInfo(false)
-                .run("--server.port=0", "--almahwar.db.host=" + TemporaryDatabase.host(),
+                .run(com.almahwar.api.support.TemporaryApiDatabase.withSessionArgs("--server.port=0", "--almahwar.db.host=" + TemporaryDatabase.host(),
                         "--almahwar.db.port=" + TemporaryDatabase.port(),
                         "--almahwar.db.name=" + TemporaryDatabase.NAME,
                         "--almahwar.db.user=" + TemporaryDatabase.user(),
                         "--almahwar.db.password=" + TemporaryDatabase.password(),
                         "--almahwar.db.trust-server-certificate=" + TemporaryDatabase.trustServerCertificate(),
-                        "--almahwar.api.jwt.secret=" + SECRET)) {
+                        "--almahwar.api.jwt.secret=" + SECRET))) {
             int port = ((org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext) context)
                     .getWebServer().getPort();
             var client = java.net.http.HttpClient.newHttpClient();
@@ -119,7 +121,8 @@ class SqlServerIntegrationTest {
             java.sql.Timestamp changed = (java.sql.Timestamp) TemporaryDatabase.queryOne(
                     "SELECT password_changed_at FROM dbo.Users WHERE user_id = ?", id);
             java.time.LocalDateTime version = changed == null ? null : changed.toLocalDateTime();
-            String access = context.getBean(com.almahwar.api.security.TokenService.class).issue(id, version).value();
+            String access = context.getBean(com.almahwar.api.auth.AuthService.class)
+                    .login("it_cashier",PASSWORD.toCharArray(),"integration").accessToken();
             var response = client.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(
                             "http://localhost:" + port + "/api/v1/products?size=2&sort=code"))
                             .header("Authorization", "Bearer " + access).GET().build(),
@@ -141,6 +144,8 @@ class SqlServerIntegrationTest {
     @DynamicPropertySource
     static void database(DynamicPropertyRegistry registry) throws Exception {
         TemporaryDatabase.create();
+        com.almahwar.api.support.TemporaryApiDatabase.create();
+        com.almahwar.api.support.TemporaryApiDatabase.properties(registry);
         seed();
         registry.add("almahwar.db.host", TemporaryDatabase::host);
         registry.add("almahwar.db.port", TemporaryDatabase::port);
@@ -203,6 +208,7 @@ class SqlServerIntegrationTest {
 
     @AfterAll
     static void dropDatabase() throws Exception {
+        com.almahwar.api.support.TemporaryApiDatabase.drop();
         TemporaryDatabase.drop();
         assertThat(TemporaryDatabase.NAME).isNotEqualToIgnoringCase("AlMahwarDB");
     }
@@ -292,7 +298,8 @@ class SqlServerIntegrationTest {
         }
         MvcResult fifth = login("it_lockme", "Wrong#5");
         assertThat(fifth.getResponse().getStatus()).isEqualTo(429);
-        assertThat(Integer.parseInt(fifth.getResponse().getHeader("Retry-After"))).isBetween(295, 301);
+        // locked_until is DATETIME2(0): rounding plus DATEDIFF second boundaries and the existing +1 may yield 302.
+        assertThat(Integer.parseInt(fifth.getResponse().getHeader("Retry-After"))).isBetween(295, 302);
         assertThat(intValue("SELECT COUNT(*) FROM dbo.Users WHERE username = 'it_lockme' AND locked_until > SYSDATETIME()"))
                 .isEqualTo(1);
         // the correct password does not help while locked — on the desktop or the API
@@ -370,13 +377,13 @@ class SqlServerIntegrationTest {
             try {
                 new SpringApplicationBuilder(AlMahwarApiApplication.class).web(WebApplicationType.SERVLET)
                         .logStartupInfo(false)
-                        .run("--server.port=0", "--almahwar.db.host=" + TemporaryDatabase.host(),
+                        .run(com.almahwar.api.support.TemporaryApiDatabase.withSessionArgs("--server.port=0", "--almahwar.db.host=" + TemporaryDatabase.host(),
                                 "--almahwar.db.port=" + TemporaryDatabase.port(),
                                 "--almahwar.db.name=" + TemporaryDatabase.NAME,
                                 "--almahwar.db.user=" + TemporaryDatabase.user(),
                                 "--almahwar.db.password=" + TemporaryDatabase.password(),
                                 "--almahwar.db.trust-server-certificate=" + TemporaryDatabase.trustServerCertificate(),
-                                "--almahwar.api.jwt.secret=" + SECRET)
+                                "--almahwar.api.jwt.secret=" + SECRET))
                         .close();
             } catch (Throwable e) {
                 failure = e;

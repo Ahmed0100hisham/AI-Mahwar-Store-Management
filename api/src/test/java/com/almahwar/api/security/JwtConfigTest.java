@@ -67,7 +67,8 @@ class JwtConfigTest {
         JwtDecoder decoder = config.jwtDecoder(key, props);
         LocalDateTime changed = LocalDateTime.of(2026, 3, 1, 8, 0, 5);
 
-        TokenService.IssuedToken token = new TokenService(encoder, props).issue(42, changed);
+        var sid=java.util.UUID.randomUUID();
+        TokenService.IssuedToken token = new TokenService(encoder, props).issue(42, changed,sid);
         Jwt jwt = decoder.decode(token.value());
         assertThat(jwt.getSubject()).isEqualTo("42");
         assertThat(jwt.getAudience()).containsExactly("almahwar-mobile");
@@ -77,7 +78,8 @@ class JwtConfigTest {
         assertThat(jwt.getId()).isNotBlank();
         assertThat(Duration.between(jwt.getIssuedAt(), jwt.getExpiresAt())).isEqualTo(Duration.ofMinutes(15));
         assertThat(jwt.getClaims().keySet()).containsExactlyInAnyOrder("sub", "aud", "iss", "iat", "exp", "jti",
-                TokenService.PASSWORD_VERSION_CLAIM);
+                TokenService.PASSWORD_VERSION_CLAIM,"sid");
+        assertThat(jwt.getClaimAsString("sid")).isEqualTo(sid.toString());
         assertThat(token.toString()).doesNotContain(token.value());
     }
 
@@ -87,7 +89,7 @@ class JwtConfigTest {
         ApiProperties props = properties(randomSecret(48), Duration.ofMinutes(15));
         SecretKey key = config.jwtSigningKey(props);
         Clock past = Clock.fixed(Instant.now().minus(Duration.ofHours(1)), ZoneOffset.UTC);
-        String old = new TokenService(config.jwtEncoder(key), props, past).issue(1, null).value();
+        String old = new TokenService(config.jwtEncoder(key), props, past).issue(1, null,java.util.UUID.randomUUID()).value();
         assertThatThrownBy(() -> config.jwtDecoder(key, props).decode(old))
                 .hasMessageContaining("expired");
     }
@@ -98,5 +100,21 @@ class JwtConfigTest {
         LocalDateTime t = LocalDateTime.of(2026, 10, 7, 1, 2, 3);
         assertThat(TokenService.passwordVersion(t)).isEqualTo(TokenService.passwordVersion(t));
         assertThat(TokenService.passwordVersion(t)).isNotEqualTo(TokenService.passwordVersion(t.plusSeconds(1)));
+    }
+
+    @Test void wrongAlgorithmAndMissingExpiryAreRejectedEvenWithTheCorrectKey() {
+        var config=new JwtConfig();var props=properties(randomSecret(64),Duration.ofMinutes(15));
+        var key=config.jwtSigningKey(props);var encoder=config.jwtEncoder(key);var decoder=config.jwtDecoder(key,props);
+        var now=Instant.now();
+        var claims=org.springframework.security.oauth2.jwt.JwtClaimsSet.builder().subject("1").issuer(props.jwt().issuer())
+                .audience(List.of(props.jwt().audience())).issuedAt(now).expiresAt(now.plusSeconds(900)).build();
+        String wrong=encoder.encode(org.springframework.security.oauth2.jwt.JwtEncoderParameters.from(
+                org.springframework.security.oauth2.jwt.JwsHeader.with(org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS512).build(),claims)).getTokenValue();
+        assertThatThrownBy(()->decoder.decode(wrong)).isInstanceOf(org.springframework.security.oauth2.jwt.JwtException.class);
+        var noExpiry=org.springframework.security.oauth2.jwt.JwtClaimsSet.builder().subject("1").issuer(props.jwt().issuer())
+                .audience(List.of(props.jwt().audience())).issuedAt(now).build();
+        String indefinite=encoder.encode(org.springframework.security.oauth2.jwt.JwtEncoderParameters.from(
+                org.springframework.security.oauth2.jwt.JwsHeader.with(org.springframework.security.oauth2.jose.jws.MacAlgorithm.HS256).build(),noExpiry)).getTokenValue();
+        assertThatThrownBy(()->decoder.decode(indefinite)).isInstanceOf(org.springframework.security.oauth2.jwt.JwtException.class);
     }
 }

@@ -4,6 +4,7 @@ import com.almahwar.service.RolePermissions;
 import com.almahwar.model.Permission;
 import com.almahwar.api.auth.AuthUserRepository;
 import com.almahwar.api.auth.AuthUserRepository.UserState;
+import com.almahwar.api.session.ApiSessionRepository;
 import org.springframework.core.convert.converter.Converter;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.authentication.AbstractAuthenticationToken;
@@ -30,9 +31,11 @@ import java.util.Set;
 public class UserPrincipalLoader implements Converter<Jwt, AbstractAuthenticationToken> {
 
     private final AuthUserRepository users;
+    private final ApiSessionRepository sessions;
 
-    public UserPrincipalLoader(AuthUserRepository users) {
+    public UserPrincipalLoader(AuthUserRepository users, ApiSessionRepository sessions) {
         this.users = users;
+        this.sessions = sessions;
     }
 
     @Override
@@ -57,9 +60,16 @@ public class UserPrincipalLoader implements Converter<Jwt, AbstractAuthenticatio
         if (!TokenService.passwordVersion(user.passwordChangedAt()).equals(tokenVersion)) {
             throw new SessionRevokedException("password changed");
         }
+        java.util.UUID sid;
+        try { sid = java.util.UUID.fromString(jwt.getClaimAsString("sid")); }
+        catch (RuntimeException e) { throw new SessionRevokedException("session required"); }
+        try {
+            if (!sessions.live(sid,userId,tokenVersion,user.credentialFingerprint(),user.mustChangePassword()))
+                throw new SessionRevokedException("session unavailable");
+        } catch (DataAccessException e) { throw new UserStateUnavailableException(e); }
         Set<Permission> permissions = user.mustChangePassword() ? Set.of() : RolePermissions.forRole(user.roleCode());
         return new ApiAuthenticationToken(new ApiUser(user.userId(), user.username(), user.fullName(), user.roleCode(),
-                user.roleName(), user.mustChangePassword(), permissions, jwt.getId()));
+                user.roleName(), user.mustChangePassword(), permissions, jwt.getId(),sid));
     }
 
     /**

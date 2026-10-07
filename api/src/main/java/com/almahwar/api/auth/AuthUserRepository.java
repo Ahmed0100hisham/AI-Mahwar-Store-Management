@@ -17,7 +17,7 @@ import java.util.Optional;
 @Repository
 public class AuthUserRepository {
 
-    /** Login lookup: includes the hash, which never leaves {@link AuthService}. */
+    /** Login lookup: the hash stays inside authentication services and never enters an HTTP response. */
     private static final String SELECT_LOGIN = """
             SELECT u.user_id, u.username, u.password_hash, u.full_name, u.is_active, u.must_change_password,
                    u.failed_login_attempts, u.locked_until, u.password_changed_at,
@@ -29,9 +29,10 @@ public class AuthUserRepository {
             WHERE u.username = ?
             """;
 
-    /** Per-request state of a token's user: no hash. */
+    /** Per-request state: map the stored hash to a server-only fingerprint, never retain the hash in UserState. */
     private static final String SELECT_STATE = """
             SELECT u.user_id, u.username, u.full_name, u.is_active, u.must_change_password, u.password_changed_at,
+                   u.password_hash,
                    r.role_code, r.role_name
             FROM dbo.Users u
             JOIN dbo.Roles r ON r.role_id = u.role_id
@@ -57,7 +58,12 @@ public class AuthUserRepository {
 
     /** What an authenticated request needs to know about its user, re-read on every request. */
     public record UserState(int userId, String username, String fullName, boolean active, boolean mustChangePassword,
-                            LocalDateTime passwordChangedAt, String roleCode, String roleName) {
+                            LocalDateTime passwordChangedAt, String roleCode, String roleName, String credentialFingerprint) {
+        public UserState(int userId, String username, String fullName, boolean active, boolean mustChangePassword,
+                         LocalDateTime passwordChangedAt, String roleCode, String roleName) {
+            this(userId,username,fullName,active,mustChangePassword,passwordChangedAt,roleCode,roleName,null);
+        }
+        @Override public String toString() { return "UserState[userId="+userId+", role="+roleCode+"]"; }
     }
 
     /** Result of {@link #recordFailedLogin}. */
@@ -114,9 +120,33 @@ public class AuthUserRepository {
     }
 
     /** Re-hash with the current settings on login (does not count as a password change, as on the desktop). */
-    public void updatePasswordHash(int userId, String passwordHash) {
-        jdbc.sql("UPDATE dbo.Users SET password_hash = ?, updated_at = SYSDATETIME() WHERE user_id = ?")
-                .params(passwordHash, userId).update();
+    public boolean upgradePasswordHash(int userId, String oldHash, String newHash) {
+        return jdbc.sql("UPDATE dbo.Users SET password_hash = ?, updated_at = SYSDATETIME() WHERE user_id = ? AND password_hash COLLATE Latin1_General_100_BIN2 = ?")
+                .params(newHash, userId, oldHash).update() == 1;
+    }
+
+    public Optional<LoginRow> findCredentials(int userId) {
+        return jdbc.sql(SELECT_LOGIN.replace("WHERE u.username = ?", "WHERE u.user_id = ?"))
+                .param(userId).query(AuthUserRepository::mapLogin).optional();
+    }
+
+    /** Optimistic credential CAS: a concurrent Desktop reset must never be overwritten by a stale request.
+     * DATETIME2(0) requires a monotonic second to invalidate pwv even for two changes in the same second. */
+    public boolean changePassword(int userId, String oldHash, String newHash) {
+        return jdbc.sql("""
+                UPDATE dbo.Users SET password_hash=?, must_change_password=0,
+                    password_changed_at=CASE WHEN password_changed_at>=CONVERT(datetime2(0),SYSDATETIME())
+                        THEN DATEADD(SECOND,1,password_changed_at) ELSE SYSDATETIME() END,
+                    failed_login_attempts=0,locked_until=NULL,updated_at=SYSDATETIME()
+                WHERE user_id=? AND is_active=1 AND password_hash COLLATE Latin1_General_100_BIN2=?
+                """).params(newHash,userId,oldHash).update()==1;
+    }
+
+    /** Extra server-only check closes same-second Desktop password-reset gaps in DATETIME2(0) pwv. */
+    public static String fingerprint(String hash) {
+        try { return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                .digest(hash.getBytes(java.nio.charset.StandardCharsets.UTF_8))); }
+        catch (java.security.NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
     }
 
     public void updateLastLogin(int userId) {
@@ -134,7 +164,8 @@ public class AuthUserRepository {
     private static UserState mapState(ResultSet rs, int row) throws SQLException {
         return new UserState(rs.getInt("user_id"), rs.getString("username"), rs.getString("full_name"),
                 rs.getBoolean("is_active"), rs.getBoolean("must_change_password"),
-                dateTime(rs, "password_changed_at"), rs.getString("role_code"), rs.getString("role_name"));
+                dateTime(rs, "password_changed_at"), rs.getString("role_code"), rs.getString("role_name"),
+                fingerprint(rs.getString("password_hash")));
     }
 
     private static LocalDateTime dateTime(ResultSet rs, String column) throws SQLException {

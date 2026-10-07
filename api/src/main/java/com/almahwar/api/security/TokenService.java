@@ -21,7 +21,7 @@ import java.util.UUID;
  * <ul>
  *   <li>{@code sub}: the user id; {@code iss} / {@code aud}: this API and its mobile clients;</li>
  *   <li>{@code iat} / {@code exp}: lifetime ({@code almahwar.api.jwt.access-token-ttl}, 15 minutes by default);</li>
- *   <li>{@code jti}: unique id (for logs and a future revocation list);</li>
+ *   <li>{@code jti}: unique token id; {@code sid}: the tracked API session checked on every request;</li>
  *   <li>{@code pwv}: the password version ({@code Users.password_changed_at}). A password change or an admin reset
  *       changes it, so every token issued before stops working at once.</li>
  * </ul>
@@ -55,7 +55,8 @@ public class TokenService {
         this.clock = clock;
     }
 
-    public IssuedToken issue(int userId, LocalDateTime passwordChangedAt) {
+    public IssuedToken issue(int userId, LocalDateTime passwordChangedAt, UUID sessionId) {
+        java.util.Objects.requireNonNull(sessionId, "sessionId");
         Instant now = clock.instant();
         Instant expires = now.plus(settings.accessTokenTtl());
         JwtClaimsSet claims = JwtClaimsSet.builder()
@@ -65,6 +66,7 @@ public class TokenService {
                 .issuedAt(now)
                 .expiresAt(expires)
                 .id(UUID.randomUUID().toString())
+                .claim("sid", sessionId.toString())
                 .claim(PASSWORD_VERSION_CLAIM, passwordVersion(passwordChangedAt))
                 .build();
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).type("JWT").build();

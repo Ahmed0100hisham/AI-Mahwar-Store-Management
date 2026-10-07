@@ -1,6 +1,6 @@
 # Al Mahwar Store Management System — REST API Architecture
 
-Status: **API Phase 1 shared-core adoption** · branch `api-core-adoption` · Spring Boot 4.1.1 · Java 17
+Status: **API Phase 2 authentication ready for review; 150 API tests passed (45 SQL), Desktop 168 passed** · branch `api-phase2-auth` · Spring Boot 4.1.1 · Java 17
 Frozen baseline: released Desktop **v1.0.1** (tag `v1.0.1`, commit `c0234e4`), database schema **1.10.0**.
 
 ---
@@ -82,7 +82,7 @@ limits, sort allowlist and errors are unchanged. No business mutation is exposed
 | Audit insertion (`AuditLogRepository` / `AuditLogDao`) | C | Retain API authentication audit, including request client address and quiet failure handling. Shared mutation audit remains core-owned when separately authorized. |
 | Product count/page projection SQL | B | Retained bounded API paging/sort projection behind the core DAO adapter; immutable core has no paged method. No duplicated product business policy remains here. |
 | Schema probing / Desktop health checks | B | API readiness/startup infrastructure probes exact schema and required endpoint tables; Desktop server-admin health classes are excluded. |
-| CredentialPolicy / password-change rules | — | No duplicate exists in Phase 1. Core policy is available; password-change endpoint remains unimplemented. |
+| CredentialPolicy / password-change rules | A | Phase 2 uses core `CredentialPolicy.validateNewPassword` and `PasswordHasher`; no duplicate policy or hashing. |
 | JWT, principal loading, Spring Security, HTTP validation/DTO/error model | B | API transport/security infrastructure; must remain outside core. Request bounds are HTTP-specific, not duplicated business validation. |
 
 ## 3. Trust boundaries
@@ -114,11 +114,12 @@ The API holds the only credentials, exposes only business operations, and runs e
 | Package | Content |
 |---|---|
 | `config` | `DatabaseProperties`, `ApiProperties` (validated configuration), `DataSourceConfig` (HikariCP), `OpenApiConfig` |
-| `security` | `SecurityConfig` (filter chain, CORS), `JwtConfig`, `TokenService`, `UserPrincipalLoader`, `ApiUser`, `CurrentUser`, `PasswordChangeRequiredFilter`, `SecurityErrorHandlers`, ported `PasswordHasher` / `Permission` / `RolePermissions` |
+| `security` | `SecurityConfig`, `JwtConfig`, `TokenService`, `UserPrincipalLoader`, `ApiUser`, `CurrentUser`, `PasswordChangeRequiredFilter`, `SecurityErrorHandlers`; hashing and permissions come from core |
 | `auth` | `AuthController`, `AuthService` (login rules), `AuthUserRepository`, `LoginAttemptTracker`, `dto/` |
 | `audit` | `AuditLogRepository` (writes the desktop's `Audit_Log`) |
+| `session` | `ApiSessionRepository`, `ApiSessionSchemaRepository`, `SessionService`, `RefreshTokens`; separate API pool and transactions |
 | `product` | proof of concept: `ProductController` → `ProductQueryService` → `ProductRepository`, `ProductResponse`, `ProductSort` |
-| `health` | `HealthController`, `SchemaCompatibilityChecker`, `StartupSchemaVerifier`, `DatabaseStatusRepository` |
+| `health` | `HealthController`, business/API schema compatibility checkers, `StartupSchemaVerifier`, `DatabaseStatusRepository` |
 | `error` | `ApiError`, `ErrorCode`, `ApiException`, `FieldValidationException`, `GlobalExceptionHandler`, `ErrorResponseWriter` |
 | `web` | `RequestIdFilter` (correlation id), `PageQuery`, `PageResponse` |
 
@@ -135,6 +136,9 @@ directory (git-ignored) › bundled `application.properties` (safe defaults, **n
 | `almahwar.db.host` / `port` / `name` | `ALMAHWAR_DB_HOST` / `_PORT` / `_NAME` | `localhost` / `1433` / `AlMahwarDB` |
 | `almahwar.db.user` / `password` | `ALMAHWAR_DB_USER` / `ALMAHWAR_DB_PASSWORD` | **required**, no default |
 | `almahwar.db.encrypt` / `trust-server-certificate` | `ALMAHWAR_DB_ENCRYPT` / `ALMAHWAR_DB_TRUST_SERVER_CERTIFICATE` | `true` / `false` |
+| `almahwar.api.db.host` / `port` / `name` | `ALMAHWAR_API_DB_HOST` / `_PORT` / `_NAME` | `localhost` / `1433` / `AlMahwarApiDB` |
+| `almahwar.api.db.user` / `password` | `ALMAHWAR_API_DB_USER` / `_PASSWORD` | **independently required**, no business fallback |
+| `almahwar.api.db.initialize` | `ALMAHWAR_API_DB_INITIALIZE` | false; explicit empty-catalog baseline opt-in |
 | `almahwar.api.jwt.secret` | `ALMAHWAR_API_JWT_SECRET` | **required**: base64 of ≥ 32 random bytes |
 | `almahwar.api.jwt.access-token-ttl` | `ALMAHWAR_API_JWT_ACCESS_TOKEN_TTL` | `15m` (max 1 h) |
 | `almahwar.api.login.max-attempts` / `lock-seconds` | … | `5` / `300` — **must equal the desktop's** `security.login.*` |
@@ -144,7 +148,8 @@ directory (git-ignored) › bundled `application.properties` (safe defaults, **n
 The API refuses to start when a required value is missing, a value is out of range, the JWT secret is short /
 not base64 / not random, a CORS origin contains `*`, or the database is incompatible (§18). Configuration objects
 redact secrets in `toString()`. Template: `api/config/application.example.properties`.
-`spring.sql.init.mode=never`: the API never runs SQL scripts against the database.
+`spring.sql.init.mode=never`: Spring's generic script initializer is disabled. No business schema scripts run.
+Only the explicitly enabled API-owned versioned baseline may initialize the separate API catalog.
 
 **Database account.** The API must not run as `sa` in production. Create a dedicated login with only what the
 implemented endpoints need (extend per phase):
@@ -157,7 +162,8 @@ CREATE USER almahwar_api FOR LOGIN almahwar_api;
 GRANT SELECT ON dbo.Schema_Info TO almahwar_api;
 GRANT SELECT ON dbo.Roles TO almahwar_api;
 GRANT SELECT ON dbo.Users TO almahwar_api;
-GRANT UPDATE (failed_login_attempts, locked_until, last_login_at, password_hash, updated_at) ON dbo.Users TO almahwar_api;
+GRANT UPDATE (failed_login_attempts, locked_until, last_login_at, password_hash, updated_at,
+              must_change_password, password_changed_at) ON dbo.Users TO almahwar_api;
 GRANT INSERT ON dbo.Audit_Log TO almahwar_api;
 GRANT SELECT ON dbo.Products TO almahwar_api;
 GRANT SELECT ON dbo.Categories TO almahwar_api;
@@ -169,8 +175,9 @@ GRANT SELECT ON dbo.Brands TO almahwar_api;
 
 ## 7. Authentication design
 
-`POST /api/v1/auth/login` `{ "username", "password" }` → `200 { accessToken, tokenType: "Bearer", expiresIn,
-expiresAt, mustChangePassword, user }`, `Cache-Control: no-store`.
+`POST /api/v1/auth/login` `{ "username", "password", "deviceLabel"? }` → `200 { accessToken, tokenType: "Bearer",
+expiresIn, expiresAt, mustChangePassword, user, refreshToken, sid, refreshExpiresAt, absoluteExpiresAt }`,
+`Cache-Control: no-store`. Required-change login returns null refreshToken/refreshExpiresAt.
 
 `AuthService.login` follows the desktop's `AuthServiceImpl.login` step for step:
 
@@ -182,7 +189,8 @@ expiresAt, mustChangePassword, user }`, `Cache-Control: no-store`.
    `LOGIN_FAILED` and, when it locks, `ACCOUNT_LOCKED`; answer `401 INVALID_CREDENTIALS` (or 429 when it locked).
 4. Correct password but disabled → `403 ACCOUNT_DISABLED`; role without permissions (e.g. `MANAGER`) →
    `403 NO_PERMISSIONS`. Both only after a correct password, as on the desktop.
-5. Success → reset counter, upgrade an old-iteration hash, set `last_login_at`, audit `LOGIN`, issue token.
+5. Success → reset counter, CAS-upgrade an old-iteration hash, set `last_login_at`, recheck current credentials,
+   persist a session, issue credentials and audit `LOGIN`.
 
 Unknown user and wrong password produce byte-identical answers (no "attempts left" hint). The login is deliberately
 **not transactional**: the failure counter and audit rows must persist although the request fails.
@@ -202,7 +210,8 @@ mitigate it.
 
 ## 8. Authorization design
 
-* Every request except `GET /api/v1/health`, `GET /api/v1/health/ready`, `POST /api/v1/auth/login` (and CORS
+* Every request except `GET /api/v1/health`, `GET /api/v1/health/ready`, `POST /api/v1/auth/login`,
+  `POST /api/v1/auth/refresh` (and CORS
   pre-flight) requires a valid bearer token — deny by default, including unknown paths (401).
 * The token's user is reloaded from the database per request (`UserPrincipalLoader`): deleted / disabled user or a
   changed password ⇒ `401 SESSION_REVOKED`; a changed role applies at once.
@@ -228,22 +237,40 @@ in real desktop-created accounts.
 anyone mint tokens. Mitigations: short lifetime, HTTPS only, key only in server configuration, per-request user
 reload (disable / password change / role change take effect immediately), no sensitive claims.
 
-| Aspect | Phase 1 |
+| Aspect | Phase 2 |
 |---|---|
 | Format | JWS (JWT) HS256, Nimbus JOSE via Spring Security — no custom crypto |
-| Claims | `sub` (user id), `iss` `almahwar-api`, `aud` `almahwar-mobile`, `iat`, `exp`, `jti`, `pwv` (password version) |
+| Claims | `sub`, `sid` (random UUID), `iss`, `aud`, `iat`, `exp`, `jti`, `pwv` (business password timestamp version) |
 | Not in the token | password, hash, role, permissions, names |
 | Lifetime | 15 min (configurable, max 1 h); 60 s clock skew |
 | Validation | signature, algorithm (HS256 only, `alg:none` rejected), expiry, issuer, audience, then DB state |
-| Revocation | `pwv` = `Users.password_changed_at` (compared by equality, no clock agreement needed): password change / admin reset revokes all earlier tokens; disabling the user revokes at once |
-| Refresh | **not implemented** — the client logs in again after expiry |
-| Logout | not implemented (stateless); client discards the token |
+| Revocation | Every request checks live user/pwv, server-only credential fingerprint, and indexed live sid with both expiries. Role permissions come from core. |
+| Refresh | Opaque `amr_` + 32 SecureRandom bytes; SHA-256 only persisted; single-use rotation, replay revokes the entire sid. Idle 8 hours, absolute 7 days. |
+| Logout | Current sid or all own sessions revoked immediately; authenticated self-service list/revoke endpoints. |
 | Key rotation | change `ALMAHWAR_API_JWT_SECRET` → all tokens invalid (users log in again) |
 
-**API Phase 2 remains unimplemented.** The approved session/refresh-token design is in
-[ADR-001](adr/ADR-001-business-core-and-api-sessions.md), including its separately approved API-owned database
-proposal. No refresh-token table, AlMahwarApiDB, sessions, sid claims, logout, password-change endpoint, rotation or
-reuse detection is implemented by this adoption. AlMahwarDB remains schema 1.10.0 without migration.
+**Phase 2 implementation:** [design and verification report](API_PHASE2_AUTH_REPORT.md).
+AlMahwarDB remains business schema **1.10.0**, untouched. API sessions live in **AlMahwarApiDB schema 1.0.0**,
+with independent `ALMAHWAR_API_DB_*` credentials and pool. There is no duplicate Users table or cross-database FK.
+DBA provisions the catalog explicitly; `ALMAHWAR_API_DB_INITIALIZE=true` installs the versioned baseline only on
+an empty API catalog, under a transaction-owned SQL application lock. Default startup verifies version, script
+checksum and required tables. Unknown/partial/incompatible schemas are rejected without repair. No migration
+dependency was added. Startup and readiness require both databases; authentication fails closed on either outage.
+
+Restricted login returns access + sid, **no refresh token**, and permits exactly GET `/auth/me`, POST
+`/auth/change-password`, POST `/auth/logout`. Password change reuses core rules and hashing, commits business
+credentials first, clears must-change, advances pwv, then revokes all API sessions including the current one.
+204 means sign in again. If API revocation fails after the credential commit, the response is 503; the password
+has changed, and live pwv/fingerprint checks independently reject old access and refresh credentials.
+
+Session mutations serialize per business user with SQL `sp_getapplock`, not Java synchronization. All live-family
+refresh hashes are retained for replay detection; maintenance deletes terminal families only after 30 days, in
+batches of 500 (`api/database/cleanup_sessions.sql`). Clients must serialize refresh requests; replay has no grace.
+Logout completes with 204; repeating with its now-revoked bearer returns 401. Own/unknown/foreign session DELETE
+returns 204 without revealing ownership. Labels are optional, trimmed, bounded to 100, and never trusted.
+
+Production rejects sa and unencrypted/unverified DB connections. Only explicit `dev` allows self-signed DB
+certificates. HTTPS remains mandatory at the reverse proxy; no cookies, refresh URLs or credential body logs.
 
 ## 11. Error model
 
@@ -350,14 +377,14 @@ AlMahwarDB is never used by automated tests.
 
 ## 20. Planned API phases (adjusted to the codebase)
 
-The released Desktop 1.0.1 core is now adopted. No Phase 2 or Flutter implementation is part of this work.
+The released Desktop 1.0.1 core is adopted; Phase 2 authentication is implemented for review. Flutter has not started.
 The planned mobile application is **Al Mahwar Manager**, not a mobile POS; no mobile sales creation is currently
 planned. Future business endpoints require separate approval and must use the shared core.
 
 | Phase | Scope | Notes / prerequisites |
 |---|---|---|
 | 1 | Foundation, security, health, POC (this phase) | done — awaiting review |
-| 2 | Auth completion: password change, logout, sessions, refresh | **Not started**; follow approved ADR-001 design, separate authorization and API persistence plan. No AlMahwarDB migration in adoption. |
+| 2 | Auth completion: password change, logout, sessions, refresh | **Implemented for review** on `api-phase2-auth`; separate API database 1.0.0, no business schema migration. |
 | 3 | Products & inventory reads: product detail / barcode lookup, categories, brands, units, stock balances, movements | read-only; core `INVENTORY` permission rules |
 | 4 | Customers / suppliers reads (+ balances / statements with `*_BALANCE_VIEW`) | read first; edits after |
 | 5 | Future document posting (separate approval; no mobile sales currently planned) | one transaction per posting, desktop lock order, idempotency keys, credit limit & price-override rules |
@@ -369,11 +396,13 @@ planned. Future business endpoints require separate approval and must use the sh
 
 Flutter work starts only after the API contract and security foundation are accepted.
 
-## Known limitations (Phase 1 + shared-core adoption)
+## Known limitations (Phase 2)
 
-* No refresh token / logout / password change endpoint; users with `must_change_password` can only call
-  `/auth/me` and must change the password on the desktop for now.
-* Access tokens cannot be revoked individually before expiry (≤ 15 min) except via disable / password change.
+* Cross-database credential change and session revocation are separate commits. Live credential checks close
+  the security gap; a 503 after password change may mean the new password already committed.
+* Restoring either authentication-related database can restore earlier security/credential state: revoke every API
+  session after restore.
+* Login rehash upgrades also invalidate older API sessions via their credential fingerprint (safe re-login required).
 * No per-IP rate limiting inside the API (planned at the reverse proxy).
 * The unknown-username throttle is per API process (as on the desktop, per desktop process).
 * The password arrives as a JSON string, which cannot be wiped from memory (converted to `char[]` and wiped after).

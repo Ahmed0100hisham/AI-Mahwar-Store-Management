@@ -9,7 +9,8 @@ import jakarta.validation.constraints.Size;
  */
 public record LoginRequest(
         @NotBlank(message = "أدخل اسم المستخدم.") @Size(max = 50, message = "اسم المستخدم طويل جدًا.") String username,
-        @NotBlank(message = "أدخل كلمة المرور.") @Size(max = 128, message = "كلمة المرور طويلة جدًا.") String password) {
+        @NotBlank(message = "أدخل كلمة المرور.") @Size(max = 128, message = "كلمة المرور طويلة جدًا.") String password,
+        @Size(max = 100) String deviceLabel) {
 
     /** Never print the password (records print every component by default). */
     @Override

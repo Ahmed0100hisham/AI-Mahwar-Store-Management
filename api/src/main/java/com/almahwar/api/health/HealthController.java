@@ -21,7 +21,7 @@ import java.time.Instant;
  * database name, schema or error text (those are in the server log).
  * <ul>
  *   <li>{@code /api/v1/health} — liveness: the process answers.</li>
- *   <li>{@code /api/v1/health/ready} — readiness: the database is reachable and compatible; checked at most every
+ *   <li>{@code /api/v1/health/ready} — readiness: both databases are reachable and compatible; checked at most every
  *       {@code almahwar.api.health.ready-cache} (5 s) so the public endpoint cannot be used to load the database.</li>
  * </ul>
  */
@@ -36,14 +36,16 @@ public class HealthController {
     private static final Logger LOG = LoggerFactory.getLogger(HealthController.class);
 
     private final SchemaCompatibilityChecker checker;
+    private final ApiSchemaCompatibilityChecker sessions;
     private final Duration readyCache;
     private final Clock clock;
     private volatile Instant checkedAt = Instant.EPOCH;
     private volatile boolean ready;
 
-    public HealthController(SchemaCompatibilityChecker checker,
+    public HealthController(SchemaCompatibilityChecker checker, ApiSchemaCompatibilityChecker sessions,
                             @Value("${almahwar.api.health.ready-cache:5s}") Duration readyCache) {
         this.checker = checker;
+        this.sessions = sessions;
         this.readyCache = readyCache;
         this.clock = Clock.systemUTC();
     }
@@ -65,7 +67,7 @@ public class HealthController {
                     if (!result.compatible()) {
                         LOG.warn("Not ready: {} - {}", result.status(), result.detail());
                     }
-                    ready = result.compatible();
+                    ready = result.compatible() && sessions.compatible();
                     checkedAt = now;
                 }
             }

@@ -21,7 +21,8 @@ import java.util.Set;
 public class PasswordChangeRequiredFilter extends OncePerRequestFilter {
 
     /** The only paths open before the password is changed ({@code change-password} arrives in API phase 2). */
-    static final Set<String> ALLOWED = Set.of("/api/v1/auth/me", "/api/v1/auth/change-password");
+    static final Set<String> ALLOWED = Set.of("GET /api/v1/auth/me", "POST /api/v1/auth/change-password",
+            "POST /api/v1/auth/logout");
 
     private final ErrorResponseWriter writer;
 
@@ -34,7 +35,7 @@ public class PasswordChangeRequiredFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof ApiUser user && user.mustChangePassword()
-                && !ALLOWED.contains(pathWithinApplication(request))) {
+                && !ALLOWED.contains(request.getMethod() + " " + pathWithinApplication(request))) {
             writer.write(request, response, ErrorCode.PASSWORD_CHANGE_REQUIRED, null);
             return;
         }

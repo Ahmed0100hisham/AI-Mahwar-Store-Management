@@ -48,16 +48,18 @@ public class JwtConfig {
     @Bean
     JwtDecoder jwtDecoder(SecretKey jwtSigningKey, ApiProperties properties) {
         Duration ttl = properties.jwt().accessTokenTtl();
-        if (ttl.isNegative() || ttl.isZero() || ttl.compareTo(MAX_ACCESS_TOKEN_TTL) > 0) {
+        if (ttl.compareTo(Duration.ofSeconds(1)) < 0 || ttl.compareTo(MAX_ACCESS_TOKEN_TTL) > 0) {
             throw new IllegalStateException("almahwar.api.jwt.access-token-ttl must be between 1s and "
-                    + MAX_ACCESS_TOKEN_TTL + " (access tokens are not revocable before they expire)");
+                    + MAX_ACCESS_TOKEN_TTL);
         }
         NimbusJwtDecoder decoder = NimbusJwtDecoder.withSecretKey(jwtSigningKey).macAlgorithm(MacAlgorithm.HS256).build();
         String audience = properties.jwt().audience();
         OAuth2TokenValidator<Jwt> audienceValidator = new JwtClaimValidator<List<String>>(JwtClaimNames.AUD,
                 aud -> aud != null && aud.contains(audience));
         decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
-                JwtValidators.createDefaultWithIssuer(properties.jwt().issuer()), audienceValidator));
+                JwtValidators.createDefaultWithIssuer(properties.jwt().issuer()), audienceValidator,
+                new JwtClaimValidator<java.time.Instant>(JwtClaimNames.EXP,java.util.Objects::nonNull),
+                new JwtClaimValidator<java.time.Instant>(JwtClaimNames.IAT,java.util.Objects::nonNull)));
         return decoder;
     }
 

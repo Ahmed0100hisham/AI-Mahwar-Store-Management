@@ -3,6 +3,7 @@ package com.almahwar.api.config;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.DefaultValue;
 import org.springframework.validation.annotation.Validated;
@@ -17,14 +18,14 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties("almahwar.db")
 public record DatabaseProperties(
-        @NotBlank String host,
+        @NotBlank @Pattern(regexp = "[A-Za-z0-9._-]+") String host,
         @DefaultValue("1433") @Min(1) @Max(65535) int port,
-        @DefaultValue("AlMahwarDB") @NotBlank String name,
+        @DefaultValue("AlMahwarDB") @NotBlank @Pattern(regexp = "[A-Za-z0-9_]+") String name,
         @NotBlank(message = "set ALMAHWAR_DB_USER (or almahwar.db.user)") String user,
         @NotBlank(message = "set ALMAHWAR_DB_PASSWORD (or almahwar.db.password)") String password,
         @DefaultValue("true") boolean encrypt,
         @DefaultValue("false") boolean trustServerCertificate,
-        String hostNameInCertificate,
+        @Pattern(regexp = "[A-Za-z0-9.*-]*") String hostNameInCertificate,
         @DefaultValue("5") @Min(1) @Max(60) int loginTimeoutSeconds,
         @DefaultValue("10") @Min(1) @Max(100) int maxPoolSize) {
 

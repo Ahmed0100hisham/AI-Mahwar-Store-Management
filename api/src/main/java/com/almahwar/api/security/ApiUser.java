@@ -11,7 +11,13 @@ import java.util.Set;
  * claims). A user who must change the password has <b>no</b> permission at all, exactly like the desktop session.
  */
 public record ApiUser(int userId, String username, String fullName, String roleCode, String roleName,
-                      boolean mustChangePassword, Set<Permission> permissions, String tokenId) {
+                      boolean mustChangePassword, Set<Permission> permissions, String tokenId, java.util.UUID sessionId) {
+
+    /** Core adapter fixtures have no bearer session; production principals always come from UserPrincipalLoader. */
+    public ApiUser(int id, String username, String fullName, String roleCode, String roleName,
+                   boolean mustChange, Set<Permission> permissions, String tokenId) {
+        this(id,username,fullName,roleCode,roleName,mustChange,permissions,tokenId,null);
+    }
 
     public ApiUser {
         permissions = permissions.isEmpty() ? Collections.emptySet()

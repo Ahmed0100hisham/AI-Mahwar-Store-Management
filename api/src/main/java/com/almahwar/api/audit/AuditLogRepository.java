@@ -40,7 +40,7 @@ public class AuditLogRepository {
                     .params(userId, action, table, recordId, description, machine(clientAddress))
                     .update();
         } catch (RuntimeException e) {
-            LOG.warn("Could not write audit log entry {}", action, e);
+            LOG.warn("Could not write audit log entry {} ({})", action, e.getClass().getSimpleName());
         }
     }
 

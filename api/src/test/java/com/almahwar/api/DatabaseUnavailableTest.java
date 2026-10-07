@@ -35,6 +35,7 @@ class DatabaseUnavailableTest {
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
+        ApiWebTestBase.sessionProperties(registry);
         registry.add("almahwar.db.host", () -> "db-host-that-does-not-exist.invalid");
         registry.add("almahwar.db.user", () -> "test-user");
         registry.add("almahwar.db.password", () -> "test-only-not-a-real-password");
@@ -54,6 +55,11 @@ class DatabaseUnavailableTest {
     AuditLogRepository audit;
     @TestBean
     DatabaseStatusRepository databaseStatus;
+    @MockitoBean
+    com.almahwar.api.session.ApiSessionRepository sessions;
+    @TestBean
+    com.almahwar.api.session.ApiSessionSchemaRepository sessionSchema;
+    static com.almahwar.api.session.ApiSessionSchemaRepository sessionSchema() { return ApiWebTestBase.sessionSchema(); }
 
     static DatabaseStatusRepository databaseStatus() {
         DatabaseStatusRepository mock = Mockito.mock(DatabaseStatusRepository.class);
@@ -64,7 +70,9 @@ class DatabaseUnavailableTest {
     @Test
     void coreThatCannotGetAConnectionIs503() throws Exception {
         when(authUsers.findState(2)).thenReturn(Optional.of(ApiWebTestBase.CASHIER));
-        String token = tokens.issue(2, ApiWebTestBase.PASSWORD_CHANGED).value();
+        when(sessions.live(org.mockito.ArgumentMatchers.any(),org.mockito.ArgumentMatchers.anyInt(),org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.anyString(),org.mockito.ArgumentMatchers.anyBoolean())).thenReturn(true);
+        String token = tokens.issue(2, ApiWebTestBase.PASSWORD_CHANGED,ApiWebTestBase.TEST_SID).value();
         String body = mvc.perform(get("/api/v1/products").header("Authorization", "Bearer " + token))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.code").value("SERVICE_UNAVAILABLE"))

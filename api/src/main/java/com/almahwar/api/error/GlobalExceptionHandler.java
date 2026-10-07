@@ -29,8 +29,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Turns every exception into an {@link ApiError}. Unexpected and database errors are logged in full on the server
- * (with the request id) and answered with a generic message: no SQL, database text, class name or stack trace ever
+ * Turns every exception into an {@link ApiError}. Error types are logged with the request id, without driver text
+ * or credential-bearing exception details, and answered generically: no SQL, class name or stack trace ever
  * reaches the client.
  */
 @RestControllerAdvice
@@ -127,25 +127,25 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({CannotGetJdbcConnectionException.class, DataAccessResourceFailureException.class,
             CannotCreateTransactionException.class})
     ResponseEntity<ApiError> databaseUnavailable(Exception e, HttpServletRequest request) {
-        LOG.error("Database unavailable [{} {}]", request.getMethod(), request.getRequestURI(), e);
+        LOG.error("Database unavailable [{} {}] ({})", request.getMethod(), request.getRequestURI(), e.getClass().getSimpleName());
         return respond(ErrorCode.SERVICE_UNAVAILABLE, null, request, null);
     }
 
     @ExceptionHandler(DataAccessException.class)
     ResponseEntity<ApiError> database(DataAccessException e, HttpServletRequest request) {
-        LOG.error("Database error [{} {}]", request.getMethod(), request.getRequestURI(), e);
+        LOG.error("Database error [{} {}] ({})", request.getMethod(), request.getRequestURI(), e.getClass().getSimpleName());
         return respond(ErrorCode.INTERNAL_ERROR, null, request, null);
     }
 
     @ExceptionHandler(com.almahwar.dao.DataAccessException.class)
     ResponseEntity<ApiError> coreDatabase(com.almahwar.dao.DataAccessException e, HttpServletRequest request) {
-        LOG.error("Shared core database error [{} {}]", request.getMethod(), request.getRequestURI(), e);
+        LOG.error("Shared core database error [{} {}] ({})", request.getMethod(), request.getRequestURI(), e.getClass().getSimpleName());
         return respond(ErrorCode.INTERNAL_ERROR, null, request, null);
     }
 
     @ExceptionHandler(Exception.class)
     ResponseEntity<ApiError> unexpected(Exception e, HttpServletRequest request) {
-        LOG.error("Unexpected error [{} {}]", request.getMethod(), request.getRequestURI(), e);
+        LOG.error("Unexpected error [{} {}] ({})", request.getMethod(), request.getRequestURI(), e.getClass().getSimpleName());
         return respond(ErrorCode.INTERNAL_ERROR, null, request, null);
     }
 

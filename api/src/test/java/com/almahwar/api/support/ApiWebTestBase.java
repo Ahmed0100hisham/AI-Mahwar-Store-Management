@@ -47,6 +47,9 @@ public abstract class ApiWebTestBase {
     }
 
     public static final LocalDateTime PASSWORD_CHANGED = LocalDateTime.of(2026, 1, 15, 10, 30, 0);
+    public static final java.util.UUID TEST_SID = java.util.UUID.randomUUID();
+    public static final String LOGIN_PASSWORD = "Correct#Horse2026";
+    public static final String LOGIN_HASH = com.almahwar.util.PasswordHasher.hash(LOGIN_PASSWORD.toCharArray());
 
     public static final UserState ADMIN = state(1, "admin", "ADMIN", "مدير النظام", true, false);
     public static final UserState CASHIER = state(2, "cashier", "CASHIER", "كاشير", true, false);
@@ -58,11 +61,28 @@ public abstract class ApiWebTestBase {
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
+        sessionProperties(registry);
         registry.add("almahwar.db.host", () -> "db.invalid");
         registry.add("almahwar.db.user", () -> "test-user");
         registry.add("almahwar.db.password", () -> "test-only-not-a-real-password");
         registry.add("almahwar.api.jwt.secret", () -> TEST_JWT_SECRET);
         registry.add("almahwar.api.health.ready-cache", () -> "0s");
+    }
+
+    public static void sessionProperties(DynamicPropertyRegistry registry) {
+        registry.add("almahwar.api.db.host", () -> "db.invalid");
+        registry.add("almahwar.api.db.user", () -> "session-test-user");
+        registry.add("almahwar.api.db.password", () -> "test-only-not-real");
+    }
+
+    @MockitoBean
+    protected com.almahwar.api.session.ApiSessionRepository sessionRepository;
+    @TestBean
+    protected com.almahwar.api.session.ApiSessionSchemaRepository sessionSchema;
+    public static com.almahwar.api.session.ApiSessionSchemaRepository sessionSchema() {
+        var mock=Mockito.mock(com.almahwar.api.session.ApiSessionSchemaRepository.class);
+        when(mock.compatible()).thenReturn(true);
+        return mock;
     }
 
     @Autowired
@@ -101,15 +121,25 @@ public abstract class ApiWebTestBase {
         }
         Mockito.reset(databaseStatus);
         stubCompatible(databaseStatus);
+        when(sessionSchema.compatible()).thenReturn(true);
+        when(sessionRepository.live(Mockito.any(),Mockito.anyInt(),Mockito.anyString(),Mockito.nullable(String.class),Mockito.anyBoolean()))
+                .thenReturn(true);
+        when(sessionRepository.create(Mockito.anyInt(),Mockito.anyString(),Mockito.nullable(String.class),
+                Mockito.nullable(String.class),Mockito.anyBoolean(),Mockito.nullable(byte[].class))).thenAnswer(inv -> {
+            var now=java.time.Instant.now();
+            return new com.almahwar.api.session.ApiSessionRepository.Session(TEST_SID,inv.getArgument(0),inv.getArgument(1),
+                    inv.getArgument(2),inv.getArgument(4),inv.getArgument(3),now,now,now.plusSeconds(28800),now.plusSeconds(604800),null,true);
+        });
     }
 
     /** A valid access token for the user, as the login would issue it. */
     protected String bearer(UserState user) {
-        return "Bearer " + tokens.issue(user.userId(), user.passwordChangedAt()).value();
+        return "Bearer " + tokens.issue(user.userId(), user.passwordChangedAt(),TEST_SID).value();
     }
 
     public static UserState state(int id, String username, String role, String roleName, boolean active,
                                   boolean mustChange) {
-        return new UserState(id, username, "مستخدم " + username, active, mustChange, PASSWORD_CHANGED, role, roleName);
+        return new UserState(id, username, "مستخدم " + username, active, mustChange, PASSWORD_CHANGED, role, roleName,
+                AuthUserRepository.fingerprint(LOGIN_HASH));
     }
 }

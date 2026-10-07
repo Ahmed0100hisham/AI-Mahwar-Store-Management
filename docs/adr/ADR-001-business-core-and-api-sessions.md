@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| Status | **Decision accepted** (shared business core). **Desktop v1.0.1 released/frozen** (`main` and peeled `v1.0.1`: `c0234e49e2bf00e094f2bf5de68bebd7fe5f963b`). **API shared-core adoption implemented for review** on `api-core-adoption` (no commit/tag/push). **API session architecture (§7–§10) not implemented** — design only. |
+| Status | **Decision accepted**. **Desktop v1.0.1 released/frozen** (`main` and peeled `v1.0.1`: `c0234e49e2bf00e094f2bf5de68bebd7fe5f963b`). Shared-core adoption committed/pushed as `0aa9f7b9239f6c9a060ba00c8f0309993a9deb99`. **API Phase 2 ready for review: 150 API tests passed (45 SQL), Desktop 168 passed**, uncommitted on `api-phase2-auth`. |
 | Date | 2026-10-07 |
 | Baseline | Desktop v1.0.0 (`c27b2e3`, tag `v1.0.0`), schema 1.10.0, API Phase 1 (`5cd2819`, branch `api-development`) |
 | Decides | (1) how Desktop and API share business logic; (2) refresh tokens / sessions; (3) migration path, module order, DB accounts |
@@ -52,11 +52,20 @@ to preserve Phase 1 persistence and client-address behavior while Desktop AuthSe
 The full A/B/C duplicate inventory, build instructions and verification matrix are in
 [API_ARCHITECTURE.md](../API_ARCHITECTURE.md).
 
-**API Phase 2 / session architecture (§7–§10) is still design only.** No AlMahwarApiDB, sessions, refresh tokens,
-logout, password-change endpoint or sid claim is implemented. Flutter has not started. Business DB remains
-AlMahwarDB, schema 1.10.0, with no migration. Future Al Mahwar Manager is not a mobile POS; mobile sales creation
-is not planned. The documented 1205 numbering deadlock remains an unresolved prerequisite for separately approved
-high-concurrency document mutation endpoints.
+**API Phase 2 is implemented for review** on `api-phase2-auth`, from adoption commit
+`0aa9f7b9239f6c9a060ba00c8f0309993a9deb99`. Implementation details and verification are in
+[API_PHASE2_AUTH_REPORT.md](../API_PHASE2_AUTH_REPORT.md). AlMahwarDB remains schema 1.10.0, with no migration;
+AlMahwarApiDB owns schema 1.0.0. No commit/tag/push is authorized for Phase 2. Flutter and Manager modules have
+not started; document-number SQL 1205 remains unrelated and unfixed.
+
+Implementation refinements to §7–§10: all hashes of a live refresh family are retained, rather than pruning to
+the latest few; terminal families are deleted after 30 days in bounded batches. SQL transaction application
+locks serialize user session mutations across API instances. A server-only SHA-256 credential fingerprint
+supplements timestamp pwv to detect same-second Desktop resets; neither fingerprint nor password hash goes into
+JWTs or session responses. API password changes advance DATETIME2(0) monotonically and use credential CAS.
+Restricted users get no refresh credential; their exact allowlist includes logout. Password change commits the
+business credential first, then revokes all sessions, and requires fresh login. There is no distributed transaction.
+The single versioned JDBC baseline initializer replaces a migration dependency for this one API-owned schema.
 
 ## 1. Facts established from the source code
 

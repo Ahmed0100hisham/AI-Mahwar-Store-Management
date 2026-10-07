@@ -29,14 +29,25 @@ class ConfigurationValidationTest {
 
     private static Throwable startWith(String... properties) {
         try {
+            var args=new java.util.LinkedHashMap<String,String>();
+            args.put("server.port","0");
+            args.put("almahwar.api.db.user","session-test-user");
+            args.put("almahwar.api.db.password","test-only-not-real");
+            for(String p:properties) { int eq=p.indexOf('='); args.put(p.substring(0,eq),p.substring(eq+1)); }
             new SpringApplicationBuilder(AlMahwarApiApplication.class).web(WebApplicationType.SERVLET)
                     .logStartupInfo(false)
-                    .run(java.util.stream.Stream.concat(java.util.stream.Stream.of("server.port=0"),
-                            java.util.Arrays.stream(properties)).map(a -> "--" + a).toArray(String[]::new)).close();
+                    .run(args.entrySet().stream().map(e->"--"+e.getKey()+"="+e.getValue()).toArray(String[]::new)).close();
             return null;
         } catch (Throwable e) {
             return e;
         }
+    }
+
+    @Test void missingSessionCredentialsStopStartupWithoutBusinessCredentialFallback() {
+        Throwable e=startWith("almahwar.db.user=business-user","almahwar.db.password=test-business-password",
+                "almahwar.api.db.user=","almahwar.api.db.password=","almahwar.api.jwt.secret="+SECRET);
+        assertThat(e).isNotNull();
+        assertThat(allMessages(e)).contains("almahwar.api.db").doesNotContain("test-business-password");
     }
 
     private static String allMessages(Throwable e) {

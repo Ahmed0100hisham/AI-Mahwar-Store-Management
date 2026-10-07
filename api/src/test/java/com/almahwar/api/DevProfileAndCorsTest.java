@@ -34,6 +34,7 @@ class DevProfileAndCorsTest {
 
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
+        ApiWebTestBase.sessionProperties(registry);
         registry.add("almahwar.db.host", () -> "db.invalid");
         registry.add("almahwar.db.user", () -> "test-user");
         registry.add("almahwar.db.password", () -> "test-only-not-a-real-password");
@@ -53,6 +54,9 @@ class DevProfileAndCorsTest {
     PlatformTransactionManager transactionManager;
     @TestBean
     DatabaseStatusRepository databaseStatus;
+    @TestBean
+    com.almahwar.api.session.ApiSessionSchemaRepository sessionSchema;
+    static com.almahwar.api.session.ApiSessionSchemaRepository sessionSchema() { return ApiWebTestBase.sessionSchema(); }
 
     static DatabaseStatusRepository databaseStatus() {
         DatabaseStatusRepository mock = Mockito.mock(DatabaseStatusRepository.class);

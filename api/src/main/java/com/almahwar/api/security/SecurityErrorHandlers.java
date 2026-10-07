@@ -35,7 +35,7 @@ public class SecurityErrorHandlers implements AuthenticationEntryPoint, AccessDe
     public void commence(HttpServletRequest request, HttpServletResponse response, AuthenticationException e)
             throws IOException {
         if (e instanceof AuthenticationServiceException || e instanceof UserPrincipalLoader.UserStateUnavailableException) {
-            LOG.error("Authentication could not be checked [{} {}]", request.getMethod(), request.getRequestURI(), e);
+            LOG.error("Authentication dependency unavailable [{} {}]", request.getMethod(), request.getRequestURI());
             writer.write(request, response, ErrorCode.SERVICE_UNAVAILABLE, null);
             return;
         }

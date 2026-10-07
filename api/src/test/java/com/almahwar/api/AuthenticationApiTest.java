@@ -44,7 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class AuthenticationApiTest extends ApiWebTestBase {
 
     private static final String PASSWORD = "Correct#Horse2026";
-    private static final String HASH = PasswordHasher.hash(PASSWORD.toCharArray());
+    private static final String HASH = LOGIN_HASH;
 
     private static LoginRow row(int id, String username, String role, boolean active, boolean mustChange,
                                 int failed, long lockSeconds) {
@@ -73,7 +73,7 @@ class AuthenticationApiTest extends ApiWebTestBase {
 
         verify(authUsers).resetFailedLogins(2);            // had 2 failed attempts
         verify(authUsers).updateLastLogin(2);
-        verify(authUsers, never()).updatePasswordHash(anyInt(), anyString());   // already 600,000 iterations
+        verify(authUsers, never()).upgradePasswordHash(anyInt(), anyString(),anyString());   // already 600,000 iterations
         verify(auditLog).logQuietly(eq(2), eq(AuditLogRepository.LOGIN), isNull(), isNull(), contains("تسجيل دخول"), any());
 
         String token = body.replaceAll(".*\"accessToken\":\"([^\"]+)\".*", "$1");
@@ -176,8 +176,15 @@ class AuthenticationApiTest extends ApiWebTestBase {
         LoginRow old = new LoginRow(3, "storekeeper", WeakHash.of(PASSWORD), "x", true, false, 0, false, 0,
                 PASSWORD_CHANGED, "STOREKEEPER", "STOREKEEPER");
         when(authUsers.findForLogin("storekeeper")).thenReturn(Optional.of(old));
+        when(authUsers.upgradePasswordHash(eq(3),eq(old.passwordHash()),anyString())).thenAnswer(inv -> {
+            var u=STOREKEEPER;
+            when(authUsers.findState(3)).thenReturn(Optional.of(new com.almahwar.api.auth.AuthUserRepository.UserState(
+                    u.userId(),u.username(),u.fullName(),true,false,u.passwordChangedAt(),u.roleCode(),u.roleName(),
+                    com.almahwar.api.auth.AuthUserRepository.fingerprint(inv.getArgument(2)))));
+            return true;
+        });
         assertThat(login("storekeeper", PASSWORD).getResponse().getStatus()).isEqualTo(200);
-        verify(authUsers).updatePasswordHash(eq(3), org.mockito.ArgumentMatchers.startsWith("pbkdf2_sha256$600000$"));
+        verify(authUsers).upgradePasswordHash(eq(3),eq(old.passwordHash()), org.mockito.ArgumentMatchers.startsWith("pbkdf2_sha256$600000$"));
     }
 
     @Test
@@ -284,6 +291,7 @@ class AuthenticationApiTest extends ApiWebTestBase {
         NimbusJwtEncoder encoder = new NimbusJwtEncoder(new ImmutableSecret<>(new SecretKeySpec(key, "HmacSHA256")));
         JwtClaimsSet claims = JwtClaimsSet.builder().issuer(issuer).audience(List.of(audience)).subject("1")
                 .issuedAt(issued).expiresAt(expires).id("t")
+                .claim("sid",TEST_SID.toString())
                 .claim("pwv", String.valueOf(PASSWORD_CHANGED.toEpochSecond(java.time.ZoneOffset.UTC))).build();
         return encoder.encode(JwtEncoderParameters.from(JwsHeader.with(MacAlgorithm.HS256).build(), claims)).getTokenValue();
     }

@@ -54,7 +54,7 @@ public class SecurityConfig {
                 .anonymous(a -> { })
                 .authorizeHttpRequests(auth -> {
                     auth.requestMatchers(HttpMethod.GET, PUBLIC_GET).permitAll();
-                    auth.requestMatchers(HttpMethod.POST, LOGIN).permitAll();
+                    auth.requestMatchers(HttpMethod.POST, LOGIN, "/api/v1/auth/refresh").permitAll();
                     auth.requestMatchers(HttpMethod.OPTIONS, "/api/**").permitAll();   // CORS pre-flight only
                     auth.requestMatchers("/error").permitAll();
                     if (docsEnabled) {

@@ -58,7 +58,7 @@ public class SchemaCompatibilityChecker {
             }
             return new Result(Status.COMPATIBLE, "schema " + version);
         } catch (DataAccessException e) {
-            LOG.warn("Database check failed", e);
+            LOG.warn("Database check failed ({})", e.getClass().getSimpleName());
             // 4060: cannot open the database (missing, or the login has no access to it); 916: no access
             Integer code = sqlErrorCode(e);
             if (code != null && (code == 4060 || code == 916)) {
