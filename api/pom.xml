@@ -2,7 +2,7 @@
 <!--
   Al Mahwar Store Management System - REST API (for the Flutter mobile app).
 
-  An independent Maven project: it is NOT a module of the desktop pom.xml (the frozen desktop v1.0.0 builds alone,
+  An independent Maven project: it is NOT a module of the desktop pom.xml (the frozen desktop v1.0.1 builds alone,
   unchanged). Build from this folder:  mvn clean verify
   Architecture and security design: ../docs/API_ARCHITECTURE.md
 -->
@@ -29,7 +29,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <springdoc.version>3.1.1</springdoc.version>
         <!-- The frozen desktop release the API must stay compatible with (password hashes, permission matrix) -->
-        <desktop.version>1.0.0</desktop.version>
+        <desktop.version>1.0.1</desktop.version>
     </properties>
 
     <dependencies>
@@ -81,20 +81,21 @@
             <artifactId>spring-boot-starter-security-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <!--
-          Compatibility tests only: the frozen desktop classes (PasswordHasher, RolePermissions) are the reference the
-          API's ports are checked against. Test scope, no transitive dependencies (no JavaFX in the API).
-          Install once from the repository root:  mvn install   (or: mvn install -DskipTests)
-        -->
+        <!-- Official released shared core. Install from the unchanged repository root with mvn install.
+             The classifier shares the Desktop POM: exclude only UI dependencies; keep JDBC and POI export support. -->
         <dependency>
             <groupId>com.almahwar</groupId>
             <artifactId>almahwar-store-management</artifactId>
             <version>${desktop.version}</version>
-            <scope>test</scope>
+            <classifier>core</classifier>
             <exclusions>
                 <exclusion>
-                    <groupId>*</groupId>
-                    <artifactId>*</artifactId>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-controls</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.openjfx</groupId>
+                    <artifactId>javafx-fxml</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>

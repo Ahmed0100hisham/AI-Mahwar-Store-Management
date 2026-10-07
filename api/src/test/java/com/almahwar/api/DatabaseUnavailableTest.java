@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The real connection pool and transaction manager against a database host that does not exist: a request needing the
+ * The real connection pool and shared-core connection provider against a database host that does not exist: a request needing the
  * database gets 503 SERVICE_UNAVAILABLE — not 500, and without host, driver or SQL text.
  */
 @SpringBootTest
@@ -48,7 +48,7 @@ class DatabaseUnavailableTest {
     TokenService tokens;
     @MockitoBean
     AuthUserRepository authUsers;
-    @MockitoBean
+    @Autowired
     ProductRepository products;
     @MockitoBean
     AuditLogRepository audit;
@@ -62,7 +62,7 @@ class DatabaseUnavailableTest {
     }
 
     @Test
-    void transactionThatCannotGetAConnectionIs503() throws Exception {
+    void coreThatCannotGetAConnectionIs503() throws Exception {
         when(authUsers.findState(2)).thenReturn(Optional.of(ApiWebTestBase.CASHIER));
         String token = tokens.issue(2, ApiWebTestBase.PASSWORD_CHANGED).value();
         String body = mvc.perform(get("/api/v1/products").header("Authorization", "Bearer " + token))

@@ -1,5 +1,7 @@
 package com.almahwar.api.security;
 
+import com.almahwar.service.RolePermissions;
+import com.almahwar.model.Permission;
 import com.almahwar.api.auth.AuthUserRepository;
 import com.almahwar.api.auth.AuthUserRepository.UserState;
 import org.springframework.core.convert.converter.Converter;
@@ -9,7 +11,6 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
-
 import java.util.Optional;
 import java.util.Set;
 

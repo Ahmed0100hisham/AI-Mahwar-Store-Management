@@ -115,7 +115,8 @@ public class GlobalExceptionHandler {
 
     // ---------- security (method-level checks in the service layer) ----------
 
-    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class})
+    @ExceptionHandler({AccessDeniedException.class, AuthorizationDeniedException.class,
+            com.almahwar.service.AccessDeniedException.class})
     ResponseEntity<ApiError> denied(Exception e, HttpServletRequest request) {
         return respond(ErrorCode.FORBIDDEN, null, request, null);
     }
@@ -133,6 +134,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DataAccessException.class)
     ResponseEntity<ApiError> database(DataAccessException e, HttpServletRequest request) {
         LOG.error("Database error [{} {}]", request.getMethod(), request.getRequestURI(), e);
+        return respond(ErrorCode.INTERNAL_ERROR, null, request, null);
+    }
+
+    @ExceptionHandler(com.almahwar.dao.DataAccessException.class)
+    ResponseEntity<ApiError> coreDatabase(com.almahwar.dao.DataAccessException e, HttpServletRequest request) {
+        LOG.error("Shared core database error [{} {}]", request.getMethod(), request.getRequestURI(), e);
         return respond(ErrorCode.INTERNAL_ERROR, null, request, null);
     }
 

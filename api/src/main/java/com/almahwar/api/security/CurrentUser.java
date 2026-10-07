@@ -1,5 +1,6 @@
 package com.almahwar.api.security;
 
+import com.almahwar.model.Permission;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;

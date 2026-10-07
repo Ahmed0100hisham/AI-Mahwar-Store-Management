@@ -169,4 +169,22 @@ class ProductApiTest extends ApiWebTestBase {
                 .andExpect(status().isInternalServerError()).andReturn().getResponse().getContentAsString();
         assertThat(body).doesNotContain("secret").doesNotContain("IllegalState").doesNotContain("config.properties");
     }
+
+    @Test
+    void coreErrorsKeepTheSafePhase1HttpModel() throws Exception {
+        when(productRepository.count(any(), anyBoolean())).thenThrow(new com.almahwar.dao.DataAccessException(
+                "SELECT private_column FROM dbo.Products", new SQLException("private_server", "S0001", 207)));
+        String body = mvc.perform(get("/api/v1/products").header("Authorization", bearer(CASHIER)))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(body).doesNotContain("SELECT", "private_column", "private_server", "dbo.", "DataAccessException");
+        doThrow(new com.almahwar.service.AccessDeniedException("private denial details"))
+                .when(productRepository).count(any(), anyBoolean());
+        body = mvc.perform(get("/api/v1/products").header("Authorization", bearer(CASHIER)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("FORBIDDEN"))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(body).doesNotContain("private denial");
+    }
 }

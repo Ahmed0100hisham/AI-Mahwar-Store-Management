@@ -23,7 +23,7 @@ import java.util.regex.Pattern;
  */
 public final class TemporaryDatabase {
 
-    public static final String NAME = "AlMahwarApiIT";
+    public static final String NAME = "AlMahwarApiIT_" + java.util.UUID.randomUUID().toString().replace("-", "");
 
     private static final Pattern GO = Pattern.compile("(?im)^\\s*GO\\s*$");
 

@@ -3,7 +3,7 @@ package com.almahwar.api;
 import com.almahwar.api.audit.AuditLogRepository;
 import com.almahwar.api.auth.AuthUserRepository.LoginFailure;
 import com.almahwar.api.auth.AuthUserRepository.LoginRow;
-import com.almahwar.api.security.PasswordHasher;
+import com.almahwar.util.PasswordHasher;
 import com.almahwar.api.support.ApiWebTestBase;
 import com.nimbusds.jose.jwk.source.ImmutableSecret;
 import org.junit.jupiter.api.Test;

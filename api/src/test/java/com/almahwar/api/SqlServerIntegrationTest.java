@@ -42,6 +42,93 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class SqlServerIntegrationTest {
 
+    @Autowired
+    javax.sql.DataSource dataSource;
+
+    @Autowired
+    com.almahwar.api.core.CoreConnectionBinding coreBinding;
+
+    @Test
+    @Order(9)
+    void sharedCoreUsesHikariAndOwnsCommitRollbackAndConnectionLifecycle() throws Exception {
+        assertThat(dataSource).isInstanceOf(com.zaxxer.hikari.HikariDataSource.class);
+        var pool = (com.zaxxer.hikari.HikariDataSource) dataSource;
+        assertThat(com.almahwar.dao.ConnectionSource.current())
+                .isInstanceOf(com.almahwar.api.core.DataSourceConnectionProvider.class);
+        assertThat(org.springframework.transaction.support.TransactionSynchronizationManager.isActualTransactionActive())
+                .isFalse();
+        try (var con = com.almahwar.dao.ConnectionSource.open()) {
+            assertThat(con.getClass().getName()).contains("HikariProxyConnection");
+            assertThat(con.getAutoCommit()).isTrue();
+            assertThat(con.getCatalog()).isEqualTo(TemporaryDatabase.NAME);
+        }
+        for (boolean sqlFailure : java.util.List.of(false, true)) {
+            String name = "CoreRollback-" + sqlFailure;
+            assertThat(org.assertj.core.api.Assertions.catchThrowable(() ->
+                    com.almahwar.dao.TransactionManager.inTransaction(con -> {
+                        try (var ps = con.prepareStatement("INSERT INTO dbo.Categories (name_ar) VALUES (?)")) {
+                            ps.setNString(1, name);
+                            ps.executeUpdate();
+                        }
+                        if (sqlFailure) throw new java.sql.SQLException("test rollback");
+                        throw new IllegalStateException("test rollback");
+                    }))).isInstanceOf(RuntimeException.class);
+            assertThat(((Number) TemporaryDatabase.queryOne("SELECT COUNT(*) FROM dbo.Categories WHERE name_ar = ?", name))
+                    .intValue()).isZero();
+        }
+        Integer id = com.almahwar.dao.TransactionManager.inTransaction(con -> {
+            try (var ps = con.prepareStatement("INSERT INTO dbo.Categories (name_ar) VALUES (N'CoreCommit')",
+                    java.sql.Statement.RETURN_GENERATED_KEYS)) {
+                ps.executeUpdate();
+                try (var keys = ps.getGeneratedKeys()) { keys.next(); return keys.getInt(1); }
+            }
+        });
+        assertThat(TemporaryDatabase.queryOne("SELECT name_ar FROM dbo.Categories WHERE category_id = ?", id))
+                .isEqualTo("CoreCommit");
+        try (var con = com.almahwar.dao.ConnectionSource.open()) {
+            assertThat(con.getAutoCommit()).isTrue(); // Hikari reset after the core transaction
+        }
+        assertThat(pool.getHikariPoolMXBean().getActiveConnections()).isZero();
+        assertThat(TemporaryDatabase.queryOne("SELECT schema_version FROM dbo.Schema_Info WHERE id = 1"))
+                .isEqualTo("1.10.0");
+    }
+
+    @Test
+    @Order(0)
+    void realHttpServerStartsWithoutJavafxAndServesHealthReadinessAndProducts() throws Exception {
+        try (var context = new SpringApplicationBuilder(AlMahwarApiApplication.class).web(WebApplicationType.SERVLET)
+                .logStartupInfo(false)
+                .run("--server.port=0", "--almahwar.db.host=" + TemporaryDatabase.host(),
+                        "--almahwar.db.port=" + TemporaryDatabase.port(),
+                        "--almahwar.db.name=" + TemporaryDatabase.NAME,
+                        "--almahwar.db.user=" + TemporaryDatabase.user(),
+                        "--almahwar.db.password=" + TemporaryDatabase.password(),
+                        "--almahwar.db.trust-server-certificate=" + TemporaryDatabase.trustServerCertificate(),
+                        "--almahwar.api.jwt.secret=" + SECRET)) {
+            int port = ((org.springframework.boot.web.server.servlet.context.ServletWebServerApplicationContext) context)
+                    .getWebServer().getPort();
+            var client = java.net.http.HttpClient.newHttpClient();
+            for (String path : java.util.List.of("/api/v1/health", "/api/v1/health/ready")) {
+                var response = client.send(java.net.http.HttpRequest.newBuilder(
+                                java.net.URI.create("http://localhost:" + port + path)).GET().build(),
+                        java.net.http.HttpResponse.BodyHandlers.ofString());
+                assertThat(response.statusCode()).isEqualTo(200);
+            }
+            int id = ((Number) TemporaryDatabase.queryOne("SELECT user_id FROM dbo.Users WHERE username = 'it_cashier'"))
+                    .intValue();
+            java.sql.Timestamp changed = (java.sql.Timestamp) TemporaryDatabase.queryOne(
+                    "SELECT password_changed_at FROM dbo.Users WHERE user_id = ?", id);
+            java.time.LocalDateTime version = changed == null ? null : changed.toLocalDateTime();
+            String access = context.getBean(com.almahwar.api.security.TokenService.class).issue(id, version).value();
+            var response = client.send(java.net.http.HttpRequest.newBuilder(java.net.URI.create(
+                            "http://localhost:" + port + "/api/v1/products?size=2&sort=code"))
+                            .header("Authorization", "Bearer " + access).GET().build(),
+                    java.net.http.HttpResponse.BodyHandlers.ofString());
+            assertThat(response.statusCode()).isEqualTo(200);
+            assertThat(response.body()).contains("IT-001").doesNotContain("purchasePrice");
+        }
+    }
+
     static final String PASSWORD = "Desktop#Pass2026";
     static final String SECRET;
 

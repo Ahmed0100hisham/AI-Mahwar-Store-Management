@@ -2,6 +2,7 @@ package com.almahwar.api.product;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.almahwar.model.Product;
 
 import java.math.BigDecimal;
 
@@ -21,9 +22,10 @@ public record ProductResponse(
         boolean active) {
 
     /** Maps a row; the cost is copied only when the caller may see it (it is also not selected otherwise). */
-    static ProductResponse of(ProductRepository.ProductRow r, boolean includeCost) {
-        return new ProductResponse(r.id(), r.code(), r.barcode(), r.nameAr(), r.nameEn(), r.category(), r.brand(),
-                r.unit(), r.size(), r.color(), r.salePrice(), r.wholesalePrice(),
-                includeCost ? r.purchasePrice() : null, r.quantity(), r.minimumStock(), r.active());
+    static ProductResponse of(Product r, boolean includeCost) {
+        return new ProductResponse(r.getProductId(), r.getProductCode(), r.getBarcode(), r.getNameAr(), r.getNameEn(),
+                r.getCategoryName(), r.getBrandName(), r.getUnitName(), r.getSize(), r.getColor(), r.getSalePrice(),
+                r.getWholesalePrice(), includeCost ? r.getPurchasePrice() : null, r.getQuantity(), r.getMinimumStock(),
+                r.isActive());
     }
 }

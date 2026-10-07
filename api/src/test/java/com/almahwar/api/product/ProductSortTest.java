@@ -9,6 +9,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** Only allow-listed sort fields reach SQL; LIKE wildcards are escaped like the desktop; page bounds. */
 class ProductSortTest {
+    private static final class LikeProbe extends com.almahwar.dao.BaseDao {
+        static String escape(String text) { return likeContains(text); }
+    }
 
     @Test
     void allowedSorts() {
@@ -30,7 +33,7 @@ class ProductSortTest {
 
     @Test
     void likeTextIsMatchedLiterallyAsOnTheDesktop() {
-        assertThat(ProductRepository.likeContains(" 50%_[a] ")).isEqualTo("%50[%][_][[]a]%");
+        assertThat(LikeProbe.escape(" 50%_[a] ")).isEqualTo("%50[%][_][[]a]%");
     }
 
     @Test

@@ -1,7 +1,9 @@
 package com.almahwar.api.product;
 
 import com.almahwar.api.web.PageQuery;
-import org.springframework.jdbc.core.simple.JdbcClient;
+import com.almahwar.dao.BaseDao;
+import com.almahwar.api.core.CoreConnectionBinding;
+import com.almahwar.model.Product;
 import org.springframework.stereotype.Repository;
 
 import java.math.BigDecimal;
@@ -18,13 +20,33 @@ import java.util.List;
  * The purchase price is not even selected unless the caller may see it.
  */
 @Repository
-public class ProductRepository {
+public class ProductRepository extends BaseDao {
 
     /** A product row as listed; {@code purchasePrice} is null when it was not selected. */
     public record ProductRow(int id, String code, String barcode, String nameAr, String nameEn, String category,
                              String brand, String unit, String size, String color, BigDecimal salePrice,
                              BigDecimal wholesalePrice, BigDecimal purchasePrice, BigDecimal quantity,
                              BigDecimal minimumStock, boolean active) {
+        Product toProduct() {
+            Product p = new Product();
+            p.setProductId(id);
+            p.setProductCode(code);
+            p.setBarcode(barcode);
+            p.setNameAr(nameAr);
+            p.setNameEn(nameEn);
+            p.setCategoryName(category);
+            p.setBrandName(brand);
+            p.setUnitName(unit);
+            p.setSize(size);
+            p.setColor(color);
+            p.setSalePrice(salePrice);
+            p.setWholesalePrice(wholesalePrice);
+            p.setPurchasePrice(purchasePrice);
+            p.setQuantity(quantity);
+            p.setMinimumStock(minimumStock);
+            p.setActive(active);
+            return p;
+        }
     }
 
     private static final String FROM = """
@@ -34,10 +56,8 @@ public class ProductRepository {
              LEFT JOIN dbo.Brands b ON b.brand_id = p.brand_id
             """;
 
-    private final JdbcClient jdbc;
-
-    public ProductRepository(JdbcClient jdbc) {
-        this.jdbc = jdbc;
+    public ProductRepository(CoreConnectionBinding binding) {
+        // Install the shared-core provider before this repository can execute a query.
     }
 
     public List<ProductRow> findPage(String text, boolean activeOnly, boolean includeCost, ProductSort.Order order,
@@ -53,13 +73,13 @@ public class ProductRepository {
                        p.quantity, p.minimum_stock, p.is_active
                 """.formatted(includeCost ? "p.purchase_price" : "CAST(NULL AS DECIMAL(18, 3))")
                 + FROM + where + " ORDER BY " + order.sql() + " OFFSET ? ROWS FETCH NEXT ? ROWS ONLY";
-        return jdbc.sql(sql).params(params).query(ProductRepository::map).list();
+        return queryList(sql, ProductRepository::map, params.toArray());
     }
 
     public long count(String text, boolean activeOnly) {
         List<Object> params = new ArrayList<>();
         String sql = "SELECT COUNT_BIG(*)" + FROM + where(text, activeOnly, params);
-        return jdbc.sql(sql).params(params).query(Long.class).single();
+        return queryLong(sql, params.toArray());
     }
 
     private static String where(String text, boolean activeOnly, List<Object> params) {
@@ -75,16 +95,7 @@ public class ProductRepository {
         return where.toString();
     }
 
-    /** The desktop's {@code BaseDao.likeContains}: user text is matched literally. */
-    static String likeContains(String text) {
-        String escaped = text.trim()
-                .replace("[", "[[]")
-                .replace("%", "[%]")
-                .replace("_", "[_]");
-        return "%" + escaped + "%";
-    }
-
-    private static ProductRow map(ResultSet rs, int row) throws SQLException {
+    private static ProductRow map(ResultSet rs) throws SQLException {
         return new ProductRow(rs.getInt("product_id"), rs.getString("product_code"), rs.getString("barcode"),
                 rs.getString("name_ar"), rs.getString("name_en"), rs.getString("category_name"),
                 rs.getString("brand_name"), rs.getString("unit_name"), rs.getString("size"), rs.getString("color"),

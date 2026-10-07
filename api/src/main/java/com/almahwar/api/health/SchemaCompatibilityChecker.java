@@ -19,7 +19,7 @@ import java.util.List;
 @Component
 public class SchemaCompatibilityChecker {
 
-    public static final String REQUIRED_SCHEMA_VERSION = "1.10.0";
+    public static final String REQUIRED_SCHEMA_VERSION = com.almahwar.service.SettingsService.REQUIRED_SCHEMA_VERSION;
 
     /** Tables used by the endpoints implemented so far (grows with each API phase). */
     public static final List<String> REQUIRED_TABLES = List.of("Schema_Info", "Users", "Roles", "Audit_Log",

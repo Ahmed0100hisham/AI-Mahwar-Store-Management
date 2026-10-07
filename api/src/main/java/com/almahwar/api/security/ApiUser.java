@@ -1,5 +1,7 @@
 package com.almahwar.api.security;
 
+import com.almahwar.model.Permission;
+
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;

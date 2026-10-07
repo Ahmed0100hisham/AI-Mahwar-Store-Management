@@ -36,7 +36,7 @@ Java 17 · JavaFX 21 · FXML · CSS · SQL Server (JDBC) · Maven. Arabic RTL UI
 ```bash
 mvn javafx:run                 # run from source
 mvn package                    # build + unit tests (DB integration tests are skipped)
-java -jar target/almahwar-store-management-1.0.0-app.jar
+java -jar target/almahwar-store-management-1.0.1-app.jar
 ```
 
 ## Database
@@ -525,10 +525,10 @@ The program never logs or shows the user name, the password or the full connecti
 - **Recommended — application image with its own Java runtime** (no Java on the PC). Build it once:
   ```bat
   mvn clean package
-  mkdir dist\in & copy target\almahwar-store-management-1.0.0-app.jar dist\in\
+  mkdir dist\in & copy target\almahwar-store-management-1.0.1-app.jar dist\in\
   jpackage --type app-image --name AlMahwar --input dist\in ^
-    --main-jar almahwar-store-management-1.0.0-app.jar --main-class com.almahwar.Launcher ^
-    --app-version 1.0.0 --vendor "Al Mahwar" --java-options "-Dfile.encoding=UTF-8" ^
+    --main-jar almahwar-store-management-1.0.1-app.jar --main-class com.almahwar.Launcher ^
+    --app-version 1.0.1 --vendor "Al Mahwar" --java-options "-Dfile.encoding=UTF-8" ^
     --add-modules java.base,java.desktop,java.sql,java.naming,java.logging,java.management,java.xml,java.security.jgss,java.scripting,java.net.http,jdk.crypto.ec,jdk.crypto.cryptoki,jdk.localedata,jdk.charsets,jdk.unsupported,jdk.zipfs,jdk.jfr,java.instrument,jdk.management ^
     --dest dist\out
   ```

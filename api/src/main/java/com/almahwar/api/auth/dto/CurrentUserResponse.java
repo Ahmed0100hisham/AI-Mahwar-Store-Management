@@ -1,7 +1,7 @@
 package com.almahwar.api.auth.dto;
 
 import com.almahwar.api.security.ApiUser;
-import com.almahwar.api.security.Permission;
+import com.almahwar.model.Permission;
 
 import java.util.List;
 

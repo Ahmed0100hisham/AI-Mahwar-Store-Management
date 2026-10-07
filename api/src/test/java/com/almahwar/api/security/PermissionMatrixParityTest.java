@@ -1,58 +1,47 @@
 package com.almahwar.api.security;
 
+import com.almahwar.model.Permission;
+import com.almahwar.model.Role;
+import com.almahwar.service.RolePermissions;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-/**
- * The API's permissions and role matrix must be exactly the frozen desktop's ({@code com.almahwar.model.Permission},
- * {@code com.almahwar.service.RolePermissions}) — same names, same grants per role, no new role.
- */
+/** Compare the adopted core to grants frozen from the actual Phase 1 source, not to another call to itself. */
 class PermissionMatrixParityTest {
-
-    private static final List<String> ROLES = List.of("ADMIN", "CASHIER", "STOREKEEPER", "ACCOUNTANT", "MANAGER",
-            "UNKNOWN", "admin");
-
     @Test
-    void samePermissionsInTheSameOrder() {
-        List<String> desktop = Arrays.stream(com.almahwar.model.Permission.values()).map(Enum::name).toList();
-        List<String> api = Arrays.stream(Permission.values()).map(Enum::name).toList();
-        assertThat(api).containsExactlyElementsOf(desktop);
-    }
-
-    @Test
-    void sameGrantsForEveryRole() {
-        for (String role : ROLES) {
-            Set<String> desktop = com.almahwar.service.RolePermissions.forRole(role).stream().map(Enum::name)
-                    .collect(Collectors.toSet());
-            Set<String> api = RolePermissions.forRole(role).stream().map(Enum::name).collect(Collectors.toSet());
-            assertThat(api).as(role).isEqualTo(desktop);
+    void sameGrantsForEveryReleasedRole() throws Exception {
+        Properties baseline = new Properties();
+        try (var in = getClass().getResourceAsStream("/phase1-permissions.properties")) {
+            baseline.load(in);
+        }
+        for (String role : List.of(Role.ADMIN, Role.CASHIER, Role.STOREKEEPER, Role.ACCOUNTANT)) {
+            String frozen = baseline.getProperty(role);
+            Set<String> expected = frozen.equals("*")
+                    ? Arrays.stream(Permission.values()).map(Enum::name).collect(Collectors.toSet())
+                    : Set.of(frozen.split(","));
+            assertThat(RolePermissions.forRole(role).stream().map(Enum::name).collect(Collectors.toSet()))
+                    .as(role).isEqualTo(expected);
+        }
+        for (String unknown : List.of("MANAGER", "UNKNOWN", "admin")) {
+            assertThat(RolePermissions.forRole(unknown)).isEmpty();
         }
         assertThat(RolePermissions.forRole(null)).isEmpty();
     }
 
     @Test
-    void sameRoleCodes() {
-        assertThat(RolePermissions.ADMIN).isEqualTo(com.almahwar.model.Role.ADMIN);
-        assertThat(RolePermissions.CASHIER).isEqualTo(com.almahwar.model.Role.CASHIER);
-        assertThat(RolePermissions.STOREKEEPER).isEqualTo(com.almahwar.model.Role.STOREKEEPER);
-        assertThat(RolePermissions.ACCOUNTANT).isEqualTo(com.almahwar.model.Role.ACCOUNTANT);
-    }
-
-    @Test
     void keyRulesOfTheProofOfConceptEndpoint() {
-        // products: every working role may view; cost only for admin, storekeeper, accountant; manage only admin/storekeeper
-        for (String role : List.of("ADMIN", "CASHIER", "STOREKEEPER", "ACCOUNTANT")) {
+        for (String role : List.of(Role.ADMIN, Role.CASHIER, Role.STOREKEEPER, Role.ACCOUNTANT)) {
             assertThat(RolePermissions.forRole(role)).contains(Permission.PRODUCTS_VIEW);
         }
-        assertThat(RolePermissions.forRole("CASHIER")).doesNotContain(Permission.PRODUCT_COST, Permission.PRODUCTS);
-        assertThat(RolePermissions.forRole("ACCOUNTANT")).contains(Permission.PRODUCT_COST).doesNotContain(Permission.PRODUCTS);
-        assertThat(RolePermissions.forRole("STOREKEEPER")).contains(Permission.PRODUCT_COST, Permission.PRODUCTS);
-        assertThat(RolePermissions.forRole("MANAGER")).isEmpty();
+        assertThat(RolePermissions.forRole(Role.CASHIER)).doesNotContain(Permission.PRODUCT_COST, Permission.PRODUCTS);
+        assertThat(RolePermissions.forRole(Role.ACCOUNTANT)).contains(Permission.PRODUCT_COST).doesNotContain(Permission.PRODUCTS);
+        assertThat(RolePermissions.forRole(Role.STOREKEEPER)).contains(Permission.PRODUCT_COST, Permission.PRODUCTS);
     }
 }

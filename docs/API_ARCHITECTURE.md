@@ -1,7 +1,7 @@
 # Al Mahwar Store Management System — REST API Architecture
 
-Status: **API Phase 1 (foundation)** · branch `api-development` · Spring Boot 4.1.1 · Java 17
-Frozen baseline: Desktop **v1.0.0** (tag `v1.0.0`, commit `c27b2e3`), database schema **1.10.0**.
+Status: **API Phase 1 shared-core adoption** · branch `api-core-adoption` · Spring Boot 4.1.1 · Java 17
+Frozen baseline: released Desktop **v1.0.1** (tag `v1.0.1`, commit `c0234e4`), database schema **1.10.0**.
 
 ---
 
@@ -18,45 +18,72 @@ proof-of-concept endpoint (`GET /api/v1/products`). It does **not** expose sales
 ## 2. Architecture
 
 ```
-JavaFX Desktop (frozen v1.0.0) ──► Desktop Service ──► Desktop DAO ──┐
-                                                                     ├──► SQL Server (AlMahwarDB, schema 1.10.0)
-Flutter (future) ──HTTPS──► reverse proxy (TLS) ──► Spring Boot API ─┘
-                                                     │
-                                                     ├─ security filters  (JWT, per-request user state)
-                                                     ├─ controller         (HTTP ↔ DTO, Bean Validation)
-                                                     ├─ service            (@PreAuthorize, @Transactional, rules)
-                                                     └─ repository         (explicit SQL, JdbcClient)
+Flutter (future Al Mahwar Manager) -- HTTPS --> Spring Boot REST API
+                                                  |
+                                      request SecurityContext adapter
+                                                  |
+Desktop JavaFX ---------------------------> Shared Business Core 1.0.1
+                                                  |
+                                              DAO / JDBC
+                                                  |
+                                         AlMahwarDB (1.10.0)
 ```
 
-**Repository layout — chosen for the lowest risk to the frozen desktop:**
+The API is an independent Maven project in `api/`; the root Desktop project, source, resources, configuration,
+SQL and build definition remain identical to released v1.0.1. No reactor or module rewrite is involved.
+The dependency direction is API → core → JDBC; core has no Spring, API, Flutter or UI dependency.
 
+**Official artifact:** `com.almahwar:almahwar-store-management:jar:core:1.0.1`.
+Run from the repository root (Java 17 and Maven):
+
+```powershell
+mvn install
+mvn -f api/pom.xml verify
 ```
-Al Mahwar Store Management System/
-├── pom.xml, src/, config/ …   desktop v1.0.0 — unchanged, builds alone exactly as released
-├── api/                       independent Spring Boot project (own pom.xml, not a Maven module of the desktop)
-├── database/                  shared schema scripts (owned by the desktop; the API never runs them)
-└── docs/API_ARCHITECTURE.md
-```
 
-Moving the desktop into `desktop/` was rejected for now: it changes every path of a released, tagged product for a
-cosmetic gain. An aggregator pom was rejected too: it would modify the desktop `pom.xml`.
+`mvn install` builds/tests the unchanged Desktop and installs its POM plus the attached `core` classifier into
+Maven's local repository. `mvn install -DskipTests` is available for a subsequent rebuild. No generated JAR is
+checked in and no absolute path is embedded. Fresh builds must install the core before building `api/`.
+The classifier shares the Desktop POM: API explicitly excludes `javafx-controls` and `javafx-fxml`, including their
+UI transitives. SQL Server JDBC remains; Apache POI remains transitively available for core report export.
+Spring Boot dependency management still applies; no explicit dependency or Spring Boot upgrade is part of adoption.
 
-**No runtime dependency on the desktop code.** The desktop services keep a single-user session
-(`SessionManager` singleton) and open connections through static `DatabaseConnection` / `TransactionManager`
-(DriverManager, no pool, configuration from the desktop's files). That is right for one desktop user, wrong for a
-concurrent server. Phase 1 therefore **ports** only small security primitives and proves them identical with
-**parity tests against the frozen desktop 1.0.0 classes** (test scope only; nothing of the desktop is in the API JAR):
+**Connection adapter:** `core.DataSourceConnectionProvider` obtains a fresh connection directly from the API
+Hikari `DataSource`. `CoreConnectionBinding` installs it in the released `ConnectionSource` before product queries
+can execute. Connection acquisition failures retain the Phase 1 safe 503 response. The core closes connections;
+Hikari returns them to the pool and resets auto-commit. The Desktop default remains
+`DatabaseConnection::getConnection`. The provider is process-wide: run one API application per JVM; it is never
+changed per request. Closing an owning context restores its previous provider, including nested test contexts.
 
-| Ported into the API | Checked against (desktop 1.0.0) |
-|---|---|
-| `security.PasswordHasher` | `com.almahwar.util.PasswordHasher` — hashes cross-verify both ways |
-| `security.Permission`, `security.RolePermissions` | `com.almahwar.model.Permission`, `com.almahwar.service.RolePermissions` — identical names and grants |
-| `auth.LoginAttemptTracker` | `com.almahwar.service.LoginAttemptTracker` — same behaviour |
-| `AuthUserRepository.recordFailedLogin` SQL | `com.almahwar.dao.UserDao.recordFailedLogin` — same statement |
-| `SchemaCompatibilityChecker.REQUIRED_SCHEMA_VERSION` | `SettingsService.REQUIRED_SCHEMA_VERSION` (`1.10.0`) |
+**Security adapter:** `core.SpringSecurityContext` reads the authenticated Spring Security `ApiUser` on each call.
+`UserPrincipalLoader` has already loaded live user state and rejected disabled/deleted users and stale `pwv` tokens.
+It maps only identity/role fields into a core `UserSession`, intersects principal permissions with the released role
+matrix, and honors `must_change_password` by granting no permissions. No password/hash or invented login session is
+mapped. Spring endpoint checks remain defense in depth; the released core service is authoritative.
 
-See §20 for how the business-heavy phases (sales, purchases, returns) should reuse the desktop rules instead of
-re-implementing them.
+**Products POC:** `ProductQueryService` calls the real `ProductServiceImpl.search`. A per-call `PagedProductDao`
+receives the core-authorized filter and delegates bounded count/page SQL to `ProductRepository`, which uses shared
+`BaseDao` JDBC helpers, binding and LIKE escaping through `ConnectionSource`. This paging adapter remains API-owned
+because the immutable core DAO exposes an unpaged list only. The core controls permission checks, inactive-product
+visibility and cost hiding; cost is also omitted in SQL and DTOs for unauthorized users. Public HTTP paths, DTOs,
+limits, sort allowlist and errors are unchanged. No business mutation is exposed.
+
+### Duplicate inventory and adoption decisions
+
+| Duplicate / overlap with released core | Class | Decision and reason |
+|---|---|---|
+| PBKDF2 password hashing | A | Deleted API `security.PasswordHasher`; runtime imports shared `util.PasswordHasher` (600,000 iterations). |
+| Permission enum and role grants | A | Deleted API `security.Permission` / `security.RolePermissions`; all callers use the released core classes. |
+| Product permission, inactive and cost rules | A | Removed rules from the API query service; core `ProductServiceImpl.search` owns them. |
+| Product LIKE escaping/JDBC helpers | A | Removed copied `likeContains`; inherit shared `BaseDao`, including Unicode parameter binding. |
+| Required schema constant | A | `SchemaCompatibilityChecker` uses core `SettingsService.REQUIRED_SCHEMA_VERSION` (1.10.0). |
+| Unknown-user `auth.LoginAttemptTracker` | B | Retained API implementation: it adds a 50,000-entry memory bound absent in core. Limits, normalization and expiry are parity-tested. |
+| Authentication orchestration, `AuthUserRepository` / `UserDao` SQL | C | Retained Phase 1 login counters, hash upgrade, last-login, state projection and DB-clock lock logic. Core `AuthServiceImpl` is excluded and depends on Desktop `SessionManager`; replacing it would expand scope or disturb existing security behavior. |
+| Audit insertion (`AuditLogRepository` / `AuditLogDao`) | C | Retain API authentication audit, including request client address and quiet failure handling. Shared mutation audit remains core-owned when separately authorized. |
+| Product count/page projection SQL | B | Retained bounded API paging/sort projection behind the core DAO adapter; immutable core has no paged method. No duplicated product business policy remains here. |
+| Schema probing / Desktop health checks | B | API readiness/startup infrastructure probes exact schema and required endpoint tables; Desktop server-admin health classes are excluded. |
+| CredentialPolicy / password-change rules | — | No duplicate exists in Phase 1. Core policy is available; password-change endpoint remains unimplemented. |
+| JWT, principal loading, Spring Security, HTTP validation/DTO/error model | B | API transport/security infrastructure; must remain outside core. Request bounds are HTTP-specific, not duplicated business validation. |
 
 ## 3. Trust boundaries
 
@@ -213,12 +240,10 @@ reload (disable / password change / role change take effect immediately), no sen
 | Logout | not implemented (stateless); client discards the token |
 | Key rotation | change `ALMAHWAR_API_JWT_SECRET` → all tokens invalid (users log in again) |
 
-**Planned refresh-token design (needs an approved schema migration — not done in Phase 1):** opaque random refresh
-token (≥ 256 bits) stored **hashed** in a new table (e.g. `Api_Refresh_Tokens`: id, user_id, token_hash, device
-label, created_at, expires_at, last_used_at, revoked_at, replaced_by), rotation on every use with reuse detection
-(re-use of a rotated token revokes the family), absolute lifetime (e.g. 30 days) and idle timeout matching the
-desktop policy, revocation on logout / password change / disable. Mobile storage: Keychain / Android Keystore
-(`flutter_secure_storage`). This requires a schema change → schedule as an explicit migration phase.
+**API Phase 2 remains unimplemented.** The approved session/refresh-token design is in
+[ADR-001](adr/ADR-001-business-core-and-api-sessions.md), including its separately approved API-owned database
+proposal. No refresh-token table, AlMahwarApiDB, sessions, sid claims, logout, password-change endpoint, rotation or
+reuse detection is implemented by this adoption. AlMahwarDB remains schema 1.10.0 without migration.
 
 ## 11. Error model
 
@@ -251,12 +276,11 @@ database messages, class names, file paths, hosts or credentials (tested); detai
 
 ## 13. Transaction rules
 
-* The transaction boundary is the **service method** (`@Transactional`); repositories join it. Read services use
-  `@Transactional(readOnly = true)` (count + page on one connection).
+* Shared business transactions are owned exclusively by the core `TransactionManager`; do not wrap core calls in Spring `@Transactional`. Product reads use short auto-commit pool connections; count/page are separate reads, without a snapshot guarantee (the previous READ COMMITTED transaction also did not promise a snapshot).
 * Every future business mutation (post sale, post purchase, return, payment, stock adjustment) runs as **one**
   read-write transaction in one service call: the client never coordinates several calls into one business result.
 * Lock order must follow the desktop's (`ProductDao.lockForStockChange`: `UPDLOCK, ROWLOCK`, `product_id` ascending)
-  so desktop and API cannot deadlock each other.
+  to reduce lock-order conflicts. Document-number range locks still have the known SQL Server 1205 limitation below.
 * Audit entries for a mutation are written in the same transaction (desktop rule); authentication audit is the
   exception (written outside any transaction so failures persist).
 * Idempotency keys for posting endpoints (mobile retries over flaky networks) are planned for the mutation phases.
@@ -306,7 +330,7 @@ are listed in §20 and require an explicitly approved migration.
 ## 19. Testing strategy
 
 Run from `api/`: `mvn verify` (no database needed). SQL Server integration: install the desktop artifact once
-(`mvn install` in the repository root — needed for the parity tests), then set `ALMAHWAR_IT_DB_HOST`, `_PORT`,
+(`mvn install` in the repository root — required runtime core dependency), then set `ALMAHWAR_IT_DB_HOST`, `_PORT`,
 `_USER`, `_PASSWORD`, `_TRUST_SERVER_CERTIFICATE` and run `mvn verify -Dalmahwar.it=true`.
 
 | Suite | What it proves |
@@ -314,10 +338,10 @@ Run from `api/`: `mvn verify` (no database needed). SQL Server integration: inst
 | `HealthAndErrorModelTest` | context starts; liveness/readiness; 401 format; 404/405/415; malformed JSON; request id; security headers; OpenAPI off by default |
 | `AuthenticationApiTest` | login success; same answer for unknown user / wrong password; lock at limit; locked with correct password; unknown-user throttling; disabled only after correct password; MANAGER refused; hash upgrade; validation; forged / expired / wrong-audience / wrong-issuer / `alg:none` tokens; revocation on disable / password change / delete; DB down → 503; must-change-password gate |
 | `ProductApiTest` | 200 per role; cost hidden / shown; inactive rule; validated paging & sort (injection attempts); 403; DB errors leak nothing |
-| `DatabaseUnavailableTest` | real pool + transaction manager, DB down → 503 |
+| `DatabaseUnavailableTest` | real pool + core JDBC adapter, DB down → safe 503 |
 | `DevProfileAndCorsTest` | OpenAPI in `dev` profile; CORS exact origin, no credentials |
 | `ConfigurationValidationTest` | missing / weak secrets and credentials stop startup; secrets never printed; bundled defaults clean |
-| `PasswordCompatibilityTest`, `PermissionMatrixParityTest`, `LoginAttemptTrackerTest` | parity with frozen desktop 1.0.0 |
+| `PasswordCompatibilityTest`, `PermissionMatrixParityTest`, `LoginAttemptTrackerTest` | shared core 1.0.1 against frozen Phase 1 grants / independent stored-format vectors; retained throttle parity |
 | `SchemaCompatibilityCheckerTest` | exact 1.10.0; missing tables; unreachable / 4060; startup refusal |
 | `ProductSortTest`, `ApiArchitectureTest` | allow-list, LIKE escaping, page bounds; layering, versioned routes, no JPA / Flutter |
 | `SqlServerIntegrationTest` (opt-in) | real SQL Server on a **temporary database** built from `database/01_create_database.sql` and dropped afterwards: desktop-hashed users log in, shared lock on the row, audit rows, cost visibility, paging/sort/search, hash upgrade, revocation, schema mismatch refused at startup |
@@ -326,21 +350,17 @@ AlMahwarDB is never used by automated tests.
 
 ## 20. Planned API phases (adjusted to the codebase)
 
-**Decision before the mutation phases (5–8):** the desktop services already depend on an injectable
-`SecurityContext` interface, but their DAOs use static `DatabaseConnection` / `TransactionManager`. Re-implementing
-sales/purchase posting in the API would duplicate the most delicate code (stock ledger, costing, account ledger,
-credit limits). Recommended: in Phase 2–3, a time-boxed spike evaluating **reuse of the desktop service/DAO layer as a
-library** behind a request-scoped `SecurityContext` adapter (and, if needed, a pooled connection provider) — which
-may require a small, separately approved desktop maintenance release (e.g. 1.0.1 / 1.1.0) to make the connection
-source injectable without changing behaviour. Until decided, only read endpoints are ported.
+The released Desktop 1.0.1 core is now adopted. No Phase 2 or Flutter implementation is part of this work.
+The planned mobile application is **Al Mahwar Manager**, not a mobile POS; no mobile sales creation is currently
+planned. Future business endpoints require separate approval and must use the shared core.
 
 | Phase | Scope | Notes / prerequisites |
 |---|---|---|
 | 1 | Foundation, security, health, POC (this phase) | done — awaiting review |
-| 2 | Auth completion: change own password (desktop `CredentialPolicy`), logout, token refresh | refresh tokens need **schema migration** (§10) → approve migration first; parity tests for `CredentialPolicy` |
-| 3 | Products & inventory reads: product detail / barcode lookup, categories, brands, units, stock balances, movements | read-only; `INVENTORY` permission rules; reuse-decision spike |
+| 2 | Auth completion: password change, logout, sessions, refresh | **Not started**; follow approved ADR-001 design, separate authorization and API persistence plan. No AlMahwarDB migration in adoption. |
+| 3 | Products & inventory reads: product detail / barcode lookup, categories, brands, units, stock balances, movements | read-only; core `INVENTORY` permission rules |
 | 4 | Customers / suppliers reads (+ balances / statements with `*_BALANCE_VIEW`) | read first; edits after |
-| 5 | Sales / POS posting | one transaction per posting, desktop lock order, idempotency keys, credit limit & price-override rules |
+| 5 | Future document posting (separate approval; no mobile sales currently planned) | one transaction per posting, desktop lock order, idempotency keys, credit limit & price-override rules |
 | 6 | Purchases | same pattern as 5 |
 | 7 | Financial operations (cashbox, expenses, payments) | balanced ledger entries as on the desktop |
 | 8 | Returns, quotations | against original documents; status workflow |
@@ -349,7 +369,7 @@ source injectable without changing behaviour. Until decided, only read endpoints
 
 Flutter work starts only after the API contract and security foundation are accepted.
 
-## Known limitations (Phase 1)
+## Known limitations (Phase 1 + shared-core adoption)
 
 * No refresh token / logout / password change endpoint; users with `must_change_password` can only call
   `/auth/me` and must change the password on the desktop for now.
@@ -357,3 +377,20 @@ Flutter work starts only after the API contract and security foundation are acce
 * No per-IP rate limiting inside the API (planned at the reverse proxy).
 * The unknown-username throttle is per API process (as on the desktop, per desktop process).
 * The password arrives as a JSON string, which cannot be wiped from memory (converted to `char[]` and wiped after).
+
+* **Document numbering blocker for future concurrent mutation endpoints:** inherited from v1.0.0, released v1.0.1
+  uses `SELECT MAX(...) WITH (UPDLOCK, HOLDLOCK)` and can hit SQL Server error 1205 under concurrent document
+  creation. Transactions roll back completely. No fix is attempted here; a separately approved numbering/retry
+  design must precede high-concurrency document creation. Read-only product adoption is unaffected.
+* The process-wide core connection provider supports one API application per JVM; the production API and Desktop
+  run in separate JVMs.
+
+### Adoption verification additions
+
+`CoreAdaptersTest` covers identity/permission mapping, must-change restrictions, absent/unauthenticated principals,
+thread isolation, connection lifecycle and rollback. `ProductCoreAuthorizationTest` bypasses Spring proxies to
+prove core denial and visibility. `SharedCoreRuntimeTest` checks the actual 1.0.1 classifier, excluded UI/classes,
+JavaFX absence and no Spring transaction wrapper. `SqlServerIntegrationTest` also starts a real HTTP server on a
+random port, checks health/readiness/products, verifies Hikari borrow/return and real SQL rollback for runtime and
+SQL exceptions. Tests use a unique `AlMahwarApiIT_*` database built from the existing script and drop it afterward.
+Desktop `CoreBoundaryTest`, `ConnectionSeamTest` and provider golden tests remain the release authority.

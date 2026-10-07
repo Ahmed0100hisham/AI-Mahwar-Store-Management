@@ -76,7 +76,7 @@ public abstract class ApiWebTestBase {
     protected ProductRepository productRepository;
     @MockitoBean
     protected AuditLogRepository auditLog;
-    /** No database in these tests: transactions are no-ops (DatabaseUnavailableTest covers the real manager). */
+    /** API-owned persistence, if transactional, stays isolated here; core reads do not use a Spring transaction. */
     @MockitoBean
     protected PlatformTransactionManager transactionManager;
     /** Pre-stubbed as compatible: the startup check runs while the context is created, before any test method. */
