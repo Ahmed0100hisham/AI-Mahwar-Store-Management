@@ -272,6 +272,8 @@ class ManagerSqlServerIntegrationTest {
             var specification=JSON.readTree(docs.body());int managerPaths=0;
             for(var path:specification.path("paths").properties()) {
                 if(!path.getKey().startsWith(PREFIX)) continue;
+                // Phase 4 administration is separate from the nineteen Phase 3 GET-only business routes.
+                if(path.getKey().startsWith(PREFIX+"admin/") || path.getKey().equals(PREFIX+"audit")) continue;
                 managerPaths++;assertThat(path.getValue().has("get")).isTrue();assertThat(path.getValue().has("post")).isFalse();
                 assertThat(path.getValue().path("get").path("security").toString()).contains("bearer");
             }

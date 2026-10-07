@@ -17,7 +17,7 @@ import java.sql.SQLTransientConnectionException;
 
 /** Manager-only mapping for a connection lost after acquisition, wrapped by the immutable core DAO. */
 @Order(-1)
-@RestControllerAdvice(assignableTypes=ManagerController.class)
+@RestControllerAdvice(assignableTypes={ManagerController.class,com.almahwar.api.admin.AdminController.class,com.almahwar.api.admin.AuditController.class})
 public class ManagerErrorAdvice {
     private static final Logger LOG=LoggerFactory.getLogger(ManagerErrorAdvice.class);
     @ExceptionHandler(DataAccessException.class)

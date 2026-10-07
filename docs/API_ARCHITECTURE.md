@@ -457,3 +457,44 @@ Normal released isolation applies. Separate count/page, opening/totals/history a
 can observe concurrent changes; no cross-statement snapshot consistency is promised. Existing indexes
 only are used. Query-plan evidence, recommended future measurements and the full test results are in the
 Phase 3 report. Schema versions remain business 1.10.0 and API sessions 1.0.0.
+
+### Phase 4 Manager administration boundary
+
+`admin.AdminController` provides bounded user list/detail, creation, explicit full-profile PUT,
+enable/disable, administrative password reset, and read-only role/permission metadata under
+`/api/v1/manager/admin`. `AuditController` adds GET `/api/v1/manager/audit`. Controller and service
+checks use released USERS_VIEW/CREATE/EDIT/RESET_PASSWORD and AUDIT_LOG permissions through the
+existing SpringSecurityContext intersection. These permissions belong only to ADMIN in core 1.0.1.
+
+All identity mutations delegate to the released `UserServiceImpl`; its validation, PBKDF2, audit
+transactions, self protection and database-locked last-admin invariant remain authoritative.
+No API SQL writes Users. No Desktop/core files, schemas or dependencies change. DTOs omit hashes,
+credential versions/fingerprints, lock/failure internals and session secrets. Create/reset require
+administrator-supplied temporary passwords, must-change=true, and never return the password.
+Username is immutable. PUT requires fullName, roleCode and explicit active state; phone/email may
+be null. It is full replacement with normal core last-writer semantics, not an optimistic PATCH.
+The existing mapper's unknown-field behavior is retained; extra fields have no binding to core models.
+
+`AdminSessionRepository` holds a SQL session-owned application lock on the existing Phase 2 per-user
+resource. Core identity changes and API session revocations commit separately. Enable and active PUT
+commit revocation before the core change, then revoke again; disable/reset revoke after the core change.
+No login/refresh session mutation can cross the lease. A request already authenticated may complete;
+subsequent requests reload live identity, permissions and credential fingerprints. A 503 may mean the
+identity change already committed: clients must re-read state before retrying. Pre-revocation may
+sign out the target even if core rejects an active PUT. Session locks are explicitly released; a failed
+release aborts/evicts the connection. This is API orchestration, not a distributed transaction.
+
+User lists use literal username/full-name search, assignable role/active filters and name/username/created
+sorts with id tie-breakers. Audit uses inclusive SQL-local dates (maximum 366 days), userId/action/category
+filters and fixed timestamp/id descending order. Both reuse page 0..10000, size 1..100, default 20.
+Audit responses select only id/time/actor/event/category; free-form descriptions, record ids, old/new JSON
+and machine metadata are excluded. Unknown historical action/category values become OTHER. There is
+no invented success/failure field. Existing date/user indexes are used; separate count/page statements
+can observe concurrent changes, and broad filters/deep pages still require production measurements.
+
+Administration and audit responses reuse Manager no-store and safe connection-error mapping. Core
+validation errors return safe fixed Arabic field messages with request IDs, without internal exception
+text. Existing own-session/device routes remain unchanged; no broad admin device-surveillance or
+permanent user-deletion endpoint exists. Reverse-proxy rate limits for costly create/reset operations
+remain a deployment recommendation. The full authority map and verification are in
+`API_PHASE4_MANAGER_ADMIN_REPORT.md`.
