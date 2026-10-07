@@ -6,7 +6,7 @@
 
     <groupId>com.almahwar</groupId>
     <artifactId>almahwar-store-management</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
 
     <name>Al Mahwar Store Management System</name>
@@ -117,6 +117,52 @@
                         <option>-Dfile.encoding=UTF-8</option>
                     </options>
                 </configuration>
+            </plugin>
+
+            <!--
+              mvn package => also target/almahwar-store-management-${project.version}-core.jar: the reusable business
+              core (models, rules, services, DAOs) for other hosts such as the REST API. No JavaFX classes, no UI
+              resources, no configuration files. Desktop-only parts stay out: the single-user desktop session
+              (SessionManager, AuthServiceImpl), backup / restore and the startup health check (they administer the
+              server through master). Consumers depend on it with <classifier>core</classifier> and exclude the
+              desktop's JavaFX dependencies; it needs mssql-jdbc, and poi-ooxml only for Excel report export.
+              The same version (3.4.1) as the default jar execution, so the regular jar is built exactly as before.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.4.1</version>
+                <executions>
+                    <execution>
+                        <id>core-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>core</classifier>
+                            <includes>
+                                <include>com/almahwar/model/**</include>
+                                <include>com/almahwar/util/**</include>
+                                <include>com/almahwar/dao/**</include>
+                                <include>com/almahwar/service/**</include>
+                                <!-- the desktop's default connection source and configuration reader (pure JDK) -->
+                                <include>com/almahwar/config/AppConfig*.class</include>
+                                <include>com/almahwar/config/DatabaseConnection*.class</include>
+                            </includes>
+                            <excludes>
+                                <exclude>com/almahwar/service/SessionManager*.class</exclude>
+                                <exclude>com/almahwar/service/AuthServiceImpl*.class</exclude>
+                                <exclude>com/almahwar/service/BackupRestoreServiceImpl*.class</exclude>
+                                <exclude>com/almahwar/service/HealthCheckServiceImpl*.class</exclude>
+                                <exclude>com/almahwar/service/SystemStatusServiceImpl*.class</exclude>
+                                <exclude>com/almahwar/dao/DatabaseBackupDao*.class</exclude>
+                                <exclude>com/almahwar/dao/BackupHistoryDao*.class</exclude>
+                                <exclude>com/almahwar/dao/DatabaseHealthDao*.class</exclude>
+                            </excludes>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <!-- mvn package => target/almahwar-store-management-${project.version}-app.jar (runnable fat jar) -->

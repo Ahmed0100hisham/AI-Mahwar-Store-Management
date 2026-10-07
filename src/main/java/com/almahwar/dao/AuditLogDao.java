@@ -1,9 +1,15 @@
 package com.almahwar.dao;
 
 import java.sql.Connection;
+import java.util.Objects;
+import java.util.function.Supplier;
 
 /**
  * Writes to {@code Audit_Log}.
+ * <p>
+ * The {@code machine_name} column records where an action came from. The desktop default ({@link #AuditLogDao()}) is
+ * the name of this computer, resolved once per process exactly as in 1.0.0; another host of the business core (e.g. a
+ * server) passes its own origin, asked for on every entry.
  */
 public class AuditLogDao extends BaseDao {
 
@@ -70,6 +76,19 @@ public class AuditLogDao extends BaseDao {
 
     private static final String MACHINE_NAME = resolveMachineName();
 
+    /** Origin of the entries written through this DAO ({@code machine_name}). */
+    private final Supplier<String> origin;
+
+    /** The desktop: entries carry this computer's name. */
+    public AuditLogDao() {
+        this(() -> MACHINE_NAME);
+    }
+
+    /** @param origin supplies {@code machine_name} for each entry (may return {@code null}) */
+    public AuditLogDao(Supplier<String> origin) {
+        this.origin = Objects.requireNonNull(origin, "origin");
+    }
+
     private static final String SQL = """
             INSERT INTO dbo.Audit_Log (user_id, action, table_name, record_id, description, machine_name)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -87,20 +106,20 @@ public class AuditLogDao extends BaseDao {
      * @param recordId    affected row id, or {@code null}
      */
     public void log(Integer userId, String action, String tableName, String recordId, String description) {
-        update(SQL, userId, action, tableName, recordId, description, MACHINE_NAME);
+        update(SQL, userId, action, tableName, recordId, description, origin.get());
     }
 
     /** Same, inside the caller's transaction: the entry is kept only if the change itself commits. */
     public void log(Connection con, Integer userId, String action, String tableName, String recordId,
                     String description) {
-        update(con, SQL, userId, action, tableName, recordId, description, MACHINE_NAME);
+        update(con, SQL, userId, action, tableName, recordId, description, origin.get());
     }
 
     /** Same, with the values before and after the change (JSON), e.g. an overridden price. */
     public void log(Connection con, Integer userId, String action, String tableName, String recordId,
                     String oldValues, String newValues, String description) {
         update(con, SQL_WITH_VALUES, userId, action, tableName, recordId, oldValues, newValues, description,
-                MACHINE_NAME);
+                origin.get());
     }
 
     private static String resolveMachineName() {

@@ -1,6 +1,5 @@
 package com.almahwar.dao;
 
-import com.almahwar.config.DatabaseConnection;
 
 import java.math.BigDecimal;
 import java.sql.Connection;
@@ -27,7 +26,7 @@ public abstract class BaseDao {
     // ---------- Queries ----------
 
     protected <T> List<T> queryList(String sql, RowMapper<T> mapper, Object... params) {
-        try (Connection con = DatabaseConnection.getConnection()) {
+        try (Connection con = ConnectionSource.open()) {
             return queryList(con, sql, mapper, params);
         } catch (SQLException e) {
             throw new DataAccessException("Query failed: " + sql, e);
@@ -68,7 +67,7 @@ public abstract class BaseDao {
 
     /** @return number of affected rows */
     protected int update(String sql, Object... params) {
-        try (Connection con = DatabaseConnection.getConnection()) {
+        try (Connection con = ConnectionSource.open()) {
             return update(con, sql, params);
         } catch (SQLException e) {
             throw new DataAccessException("Update failed: " + sql, e);
@@ -86,7 +85,7 @@ public abstract class BaseDao {
 
     /** Executes an INSERT and returns the generated IDENTITY value. */
     protected int insert(String sql, Object... params) {
-        try (Connection con = DatabaseConnection.getConnection()) {
+        try (Connection con = ConnectionSource.open()) {
             return insert(con, sql, params);
         } catch (SQLException e) {
             throw new DataAccessException("Insert failed: " + sql, e);
