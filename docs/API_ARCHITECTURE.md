@@ -1,6 +1,6 @@
 # Al Mahwar Store Management System — REST API Architecture
 
-Status: **API Phase 2 authentication ready for review; 150 API tests passed (45 SQL), Desktop 168 passed** · branch `api-phase2-auth` · Spring Boot 4.1.1 · Java 17
+Status: **API Phase 3 Manager reads implemented; verification recorded in the [Phase 3 report](API_PHASE3_MANAGER_READ_REPORT.md)** · branch `api-phase3-manager-read` · Spring Boot 4.1.1 · Java 17
 Frozen baseline: released Desktop **v1.0.1** (tag `v1.0.1`, commit `c0234e4`), database schema **1.10.0**.
 
 ---
@@ -14,6 +14,11 @@ validation, transactions, stock / ledger invariants) is enforced again here, on 
 Phase 1 delivers the foundation only — configuration, database connectivity and compatibility check, health,
 error model, validation, security (login, tokens, authorization), pagination, OpenAPI, tests — and one read-only
 proof-of-concept endpoint (`GET /api/v1/products`). It does **not** expose sales, purchases, payments or any mutation.
+
+Phase 2 adds authenticated device sessions and rotating refresh tokens. Phase 3 adds 19 GET-only Manager
+routes for dashboard, sales analytics, expenses/cash book, inventory, product history and party accounts.
+The complete endpoint, permission, financial and verification contract is in the
+[Phase 3 Manager read report](API_PHASE3_MANAGER_READ_REPORT.md). Business mutations and Flutter remain outside scope.
 
 ## 2. Architecture
 
@@ -385,8 +390,8 @@ planned. Future business endpoints require separate approval and must use the sh
 |---|---|---|
 | 1 | Foundation, security, health, POC (this phase) | done — awaiting review |
 | 2 | Auth completion: password change, logout, sessions, refresh | **Implemented for review** on `api-phase2-auth`; separate API database 1.0.0, no business schema migration. |
-| 3 | Products & inventory reads: product detail / barcode lookup, categories, brands, units, stock balances, movements | read-only; core `INVENTORY` permission rules |
-| 4 | Customers / suppliers reads (+ balances / statements with `*_BALANCE_VIEW`) | read first; edits after |
+| 3 | Manager dashboard, sales analytics, expense/cash book summaries, inventory/product history, customers/suppliers and accounts | **Implemented for review** on `api-phase3-manager-read`; GET-only, bounded, live released permissions; no schema changes. |
+| 4 | Next Manager scope | Not started; requires separate approval after Phase 3 acceptance. Dedicated barcode/reference lists and other read enhancements remain candidates. |
 | 5 | Future document posting (separate approval; no mobile sales currently planned) | one transaction per posting, desktop lock order, idempotency keys, credit limit & price-override rules |
 | 6 | Purchases | same pattern as 5 |
 | 7 | Financial operations (cashbox, expenses, payments) | balanced ledger entries as on the desktop |
@@ -423,3 +428,32 @@ JavaFX absence and no Spring transaction wrapper. `SqlServerIntegrationTest` als
 random port, checks health/readiness/products, verifies Hikari borrow/return and real SQL rollback for runtime and
 SQL exceptions. Tests use a unique `AlMahwarApiIT_*` database built from the existing script and drop it afterward.
 Desktop `CoreBoundaryTest`, `ConnectionSeamTest` and provider golden tests remain the release authority.
+
+### Phase 3 Manager read boundary
+
+`manager.ManagerController` delegates to `ManagerQueryService`. Both require permissions through
+`ManagerAccess`, which reads `SpringSecurityContext` and the released role matrix. Phase 2 sid, credential,
+pwv, user state, revocation and must-change checks run before Manager access. No role grants were added.
+
+`ManagerAnalyticsRepository` calls the released `DashboardDao` and `ReportDao` for financial calculations.
+API SQL supplies grouped bounded trend buckets and a slow-stock page with a unique tie-breaker matching
+the released eligibility rule. Catalog and party repositories use core detail services and shared `BaseDao`
+connections, Unicode binding and literal LIKE escaping. API projections add pagination/safe sort, selective
+cost/balance columns and paged ledger running balances where core methods are unbounded. Repositories
+perform no business writes. Authentication retains its existing audit/last-login/session writes.
+
+Money and quantities are three-decimal strings. Financial cost comes from historical document costs;
+current product cost is used only for inventory valuation. Optional cost/profit/balance fields are omitted
+without their specific permissions. Account balances keep customer debit-minus-credit and supplier
+credit-minus-debit signs. Receivables/payables include inactive parties with positive ledger debt.
+
+Business periods use SQL Server local accounting dates, preserving Desktop behavior; deploy that clock
+in Kuwait business time. Inclusive dates become half-open SQL predicates. Lists default to 20, max 100;
+page max 10000 and q max 100. Most date ranges max 366 inclusive days; weekly/monthly trends max 1096.
+Manager responses use `Cache-Control: no-store`. Connection acquisition failures and connection-class
+SQL failures during Manager reads produce safe 503 errors; other SQL failures remain safe 500 errors.
+
+Normal released isolation applies. Separate count/page, opening/totals/history and sales/profit statements
+can observe concurrent changes; no cross-statement snapshot consistency is promised. Existing indexes
+only are used. Query-plan evidence, recommended future measurements and the full test results are in the
+Phase 3 report. Schema versions remain business 1.10.0 and API sessions 1.0.0.
