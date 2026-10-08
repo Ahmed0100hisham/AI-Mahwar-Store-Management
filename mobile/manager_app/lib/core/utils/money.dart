@@ -1,5 +1,10 @@
 /// Preserve the server's exact three-decimal KWD representation without double arithmetic.
 String formatKwd(String value) {
+  return '${formatQuantity(value)} د.ك';
+}
+
+/// Quantities share the exact three-decimal transport convention; units stay separate.
+String formatQuantity(String value) {
   if (!RegExp(r'^-?\d+\.\d{3}$').hasMatch(value)) {
     throw const FormatException('Invalid KWD decimal');
   }
@@ -9,5 +14,5 @@ String formatKwd(String value) {
     RegExp(r'\B(?=(\d{3})+(?!\d))'),
     (_) => ',',
   );
-  return '${negative ? '-' : ''}$whole.${parts[1]} د.ك';
+  return '${negative ? '-' : ''}$whole.${parts[1]}';
 }

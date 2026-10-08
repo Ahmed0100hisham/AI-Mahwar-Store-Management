@@ -41,23 +41,29 @@ void main() {
     expect(find.text('أدخل كلمة المرور.'), findsOneWidget);
     expect(transport.calls, isEmpty);
   });
-  testWidgets('password visibility toggles and keyboard login opens profile', (
-    tester,
-  ) async {
-    await show(tester);
-    await tester.enterText(find.byType(TextFormField).at(0), 'fixture');
-    await tester.enterText(
-      find.byType(TextFormField).at(1),
-      'fixture-password',
-    );
-    await tester.tap(find.byTooltip('إظهار كلمة المرور'));
-    await tester.pump();
-    expect(find.byTooltip('إخفاء كلمة المرور'), findsOneWidget);
-    await tester.testTextInput.receiveAction(TextInputAction.done);
-    await tester.pumpAndSettle();
-    expect(find.text('الملف الشخصي والأجهزة'), findsWidgets);
-    expect(find.text('هذا الجهاز'), findsOneWidget);
-  });
+  testWidgets(
+    'password visibility and keyboard login preserve profile access',
+    (tester) async {
+      await show(tester);
+      await tester.enterText(find.byType(TextFormField).at(0), 'fixture');
+      await tester.enterText(
+        find.byType(TextFormField).at(1),
+        'fixture-password',
+      );
+      await tester.tap(find.byTooltip('إظهار كلمة المرور'));
+      await tester.pump();
+      expect(find.byTooltip('إخفاء كلمة المرور'), findsOneWidget);
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pumpAndSettle();
+      expect(find.text('لوحة المتابعة'), findsOneWidget);
+      await tester.tap(find.byIcon(Icons.menu));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('الملف الشخصي والأجهزة'));
+      await tester.pumpAndSettle();
+      expect(find.text('الملف الشخصي والأجهزة'), findsWidgets);
+      expect(find.text('هذا الجهاز'), findsOneWidget);
+    },
+  );
   testWidgets('restricted login cannot enter Manager shell', (tester) async {
     transport.handler = (_, path, _, _) async => path == 'auth/login'
         ? loginJson(restricted: true)

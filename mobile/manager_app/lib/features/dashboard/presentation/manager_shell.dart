@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/routing/manager_destination.dart';
 import '../../../shared/widgets/states.dart';
 import '../../auth/state/auth_controller.dart';
 import '../../profile/presentation/profile_screen.dart';
+import 'dashboard_screen.dart';
 
-class ManagerShell extends StatelessWidget {
+class ManagerShell extends StatefulWidget {
   const ManagerShell({super.key, required this.auth});
   final AuthController auth;
   @override
+  State<ManagerShell> createState() => _ManagerShellState();
+}
+
+class _ManagerShellState extends State<ManagerShell> {
+  bool _profile = false;
+  AuthController get auth => widget.auth;
+  @override
   Widget build(BuildContext context) {
     final user = auth.user!;
-    final available = ManagerDestination.future
-        .where((d) => d.visibleTo(user))
-        .toList();
+    final dashboard = user.allows('DASHBOARD');
+    final profile = _profile || !dashboard;
     return Scaffold(
       appBar: AppBar(
         title: const Text('مساحة الإدارة'),
@@ -51,28 +57,24 @@ class ManagerShell extends StatelessWidget {
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-              const ListTile(
-                selected: true,
-                leading: Icon(Icons.person_outline),
-                title: Text('الملف الشخصي والأجهزة'),
-              ),
-              const Divider(),
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('الأقسام القادمة حسب صلاحياتك'),
-              ),
-              ...available.map(
-                (d) => ListTile(
-                  enabled: false,
-                  title: Text(d.label),
-                  trailing: const Icon(Icons.lock_clock_outlined),
+              if (dashboard)
+                ListTile(
+                  selected: !profile,
+                  leading: const Icon(Icons.dashboard_outlined),
+                  title: const Text('لوحة المتابعة'),
+                  onTap: () {
+                    Navigator.pop(context);
+                    setState(() => _profile = false);
+                  },
                 ),
-              ),
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text(
-                  'هذه المرحلة لإدارة الدخول والجلسات. ستُضاف وحدات المتابعة لاحقاً.',
-                ),
+              ListTile(
+                selected: profile,
+                leading: const Icon(Icons.person_outline),
+                title: const Text('الملف الشخصي والأجهزة'),
+                onTap: () {
+                  Navigator.pop(context);
+                  setState(() => _profile = true);
+                },
               ),
             ],
           ),
@@ -88,7 +90,11 @@ class ManagerShell extends StatelessWidget {
                 onRetry: () => auth.checkSession(),
               ),
             ),
-          Expanded(child: ProfileScreen(auth: auth)),
+          Expanded(
+            child: profile
+                ? ProfileScreen(auth: auth)
+                : DashboardScreen(auth: auth),
+          ),
         ],
       ),
     );
