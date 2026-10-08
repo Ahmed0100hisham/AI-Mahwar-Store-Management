@@ -13,6 +13,8 @@ public class ManagerAccess {
     public boolean allowed(String view) {
         return switch (view) {
             case "dashboard" -> security.hasPermission(DASHBOARD);
+            case "invoices" -> security.hasPermission(SALES_VIEW);
+            case "quotations" -> security.hasPermission(QUOTATIONS_VIEW);
             case "sales" -> security.hasPermission(REPORTS_VIEW) && security.hasPermission(REPORTS_SALES);
             case "inventory" -> security.hasPermission(INVENTORY) && security.hasPermission(REPORTS_VIEW)
                     && security.hasPermission(REPORTS_INVENTORY);

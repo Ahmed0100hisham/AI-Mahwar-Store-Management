@@ -498,3 +498,40 @@ text. Existing own-session/device routes remain unchanged; no broad admin device
 permanent user-deletion endpoint exists. Reverse-proxy rate limits for costly create/reset operations
 remain a deployment recommendation. The full authority map and verification are in
 `API_PHASE4_MANAGER_ADMIN_REPORT.md`.
+
+### Phase 5 final Manager document reads and proposed v1 contract freeze
+
+`manager.ManagerDocumentController` adds exactly five GET mappings: invoices list/detail,
+quotations list/detail and daily-summary. `ManagerDocumentService` repeats released permission
+checks before validation/data access; `ManagerDocumentRepository` contains only explicit,
+parameterized, bounded read projections. SALES_VIEW / QUOTATIONS_VIEW govern documents;
+SALES_COST_VIEW / SALES_PROFIT_VIEW separately protect historical invoice costs and stored
+gross profit. All new controllers participate in existing no-store and safe connection-error advice.
+
+Invoice header totals/tax/payment snapshots come directly from frozen SQL columns, including
+stored tax absent from the released Java Sale model. List return amounts use the released report's
+inclusive end-date cutoff; detail includes all recorded returns, with independently paged items
+and return headers. Return values and cash refunds stay distinct. No allocation, tax rate,
+payment-history or post-return debt formula is invented; customer accounts remain authoritative.
+
+Quotation tracking uses the six released stored states plus core's pure past-validity rule.
+The released QuotationService reads can write expiry transitions, so Phase 5 deliberately uses
+pure projections instead. Stored linked sale metadata requires SALES_VIEW and reports its real
+status without assuming a draft/cancelled link proves posting. No business writes or expiry jobs.
+
+Daily summary composes existing Phase 3 sales/expense/cashbox methods for one accounting day,
+with their original permissions and formulas. Any inventory section is a current, separately
+dated snapshot rather than a historical stock assertion. DTOs remain exact three-decimal strings;
+lists/details retain common bounded paging and deterministic ordering. Released isolation and
+the existing cross-statement consistency limitations remain unchanged.
+
+`API_MANAGER_CONTRACT_V1.md` inventories all Phase 1–5 operations and proposes the Flutter
+v1 freeze. `API_MANAGER_BACKEND_READINESS.md` records production configuration requirements
+without secrets or deployment. Authority discovery, regression/packaged HTTP evidence and
+final Git/protected-ref checks are in `API_PHASE5_FINAL_MANAGER_REPORT.md`. Desktop/core,
+business/API schemas and dependencies remain frozen; no Flutter or mobile POS is introduced.
+
+Readiness now verifies the full set of Manager business table dependencies as well as the
+existing exact business version and independent session schema. Missing document/report
+tables produce safe NOT_READY without exposing their names to clients. This only extends
+the existing compatibility check; it creates or changes no schema objects.

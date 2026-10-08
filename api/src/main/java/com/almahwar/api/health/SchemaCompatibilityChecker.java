@@ -23,7 +23,9 @@ public class SchemaCompatibilityChecker {
 
     /** Tables used by the endpoints implemented so far (grows with each API phase). */
     public static final List<String> REQUIRED_TABLES = List.of("Schema_Info", "Users", "Roles", "Audit_Log",
-            "Products", "Categories", "Units", "Brands");
+            "Products", "Categories", "Units", "Brands", "Customers", "Suppliers",
+            "Sales", "Sale_Items", "Sale_Returns", "Sale_Return_Items", "Quotations", "Quotation_Items",
+            "Expenses", "Cash_Transactions", "Stock_Movements", "Account_Ledger");
 
     public enum Status { COMPATIBLE, UNREACHABLE, DATABASE_UNAVAILABLE, SCHEMA_MISSING, VERSION_MISMATCH, TABLES_MISSING }
 

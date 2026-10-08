@@ -274,6 +274,8 @@ class ManagerSqlServerIntegrationTest {
                 if(!path.getKey().startsWith(PREFIX)) continue;
                 // Phase 4 administration is separate from the nineteen Phase 3 GET-only business routes.
                 if(path.getKey().startsWith(PREFIX+"admin/") || path.getKey().equals(PREFIX+"audit")) continue;
+                // Phase 5 has its own complete route inventory and SQL/HTTP contract tests.
+                if(path.getKey().startsWith(PREFIX+"invoices") || path.getKey().startsWith(PREFIX+"quotations") || path.getKey().equals(PREFIX+"daily-summary")) continue;
                 managerPaths++;assertThat(path.getValue().has("get")).isTrue();assertThat(path.getValue().has("post")).isFalse();
                 assertThat(path.getValue().path("get").path("security").toString()).contains("bearer");
             }
