@@ -9,8 +9,9 @@ import '../data/dashboard_repository.dart';
 import '../state/dashboard_controller.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, required this.auth});
+  const DashboardScreen({super.key, required this.auth, this.onInventory});
   final AuthController auth;
+  final ValueChanged<bool>? onInventory;
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
@@ -138,7 +139,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const SizedBox(height: 16),
                   ],
                   if (data != null)
-                    _DashboardContent(data: data, access: access),
+                    _DashboardContent(
+                      data: data,
+                      access: access,
+                      onInventory: widget.onInventory,
+                    ),
                 ],
               ),
             ),
@@ -155,9 +160,14 @@ typedef _Figure = ({String label, String value, bool money});
 String _date(String iso) => '\u2066$iso\u2069';
 
 class _DashboardContent extends StatelessWidget {
-  const _DashboardContent({required this.data, required this.access});
+  const _DashboardContent({
+    required this.data,
+    required this.access,
+    this.onInventory,
+  });
   final DashboardData data;
   final DashboardAccess access;
+  final ValueChanged<bool>? onInventory;
   @override
   Widget build(BuildContext context) {
     final metrics = data.overview.metrics;
@@ -271,6 +281,12 @@ class _DashboardContent extends StatelessWidget {
         if (inventory != null)
           _Section(
             title: 'المخزون الحالي',
+            action: onInventory == null
+                ? null
+                : TextButton(
+                    onPressed: () => onInventory!(false),
+                    child: const Text('عرض المنتجات والمخزون'),
+                  ),
             subtitle:
                 'لقطة بتاريخ ${_date(daily.inventoryDate!.iso)}؛ ليست رصيداً تاريخياً للفترة المختارة.',
             child: _Figures(
@@ -395,6 +411,12 @@ class _DashboardContent extends StatelessWidget {
         if (access.inventory && data.lowStock != null)
           _Section(
             title: 'تنبيهات نقص المخزون',
+            action: onInventory == null
+                ? null
+                : TextButton(
+                    onPressed: () => onInventory!(true),
+                    child: const Text('عرض المخزون المنخفض'),
+                  ),
             subtitle:
                 'عرض ${data.lowStock!.items.length} من ${data.lowStock!.total} صنفاً؛ الوضع الحالي.',
             child: data.lowStock!.items.isEmpty
@@ -526,10 +548,16 @@ BoxDecoration _surface(BuildContext context) => BoxDecoration(
 );
 
 class _Section extends StatelessWidget {
-  const _Section({required this.title, required this.child, this.subtitle});
+  const _Section({
+    required this.title,
+    required this.child,
+    this.subtitle,
+    this.action,
+  });
   final String title;
   final String? subtitle;
   final Widget child;
+  final Widget? action;
   @override
   Widget build(BuildContext context) => Container(
     margin: const EdgeInsets.only(top: 20),
@@ -545,6 +573,14 @@ class _Section extends StatelessWidget {
         ],
         const SizedBox(height: 16),
         child,
+        if (action != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Align(
+              alignment: AlignmentDirectional.centerStart,
+              child: action,
+            ),
+          ),
       ],
     ),
   );
