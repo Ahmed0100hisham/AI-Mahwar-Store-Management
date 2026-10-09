@@ -9,6 +9,11 @@ import '../../sales/data/sales_access.dart';
 import '../../sales/presentation/sales_screen.dart';
 import '../../parties/data/party_access.dart';
 import '../../parties/presentation/party_screen.dart';
+import '../../final_features/data/feature_access.dart';
+import '../../quotations/presentation/quotation_screen.dart';
+import '../../reports/presentation/report_screen.dart';
+import '../../audit/presentation/audit_screen.dart';
+import '../../administration/presentation/admin_screen.dart';
 import 'dashboard_screen.dart';
 
 class ManagerShell extends StatefulWidget {
@@ -18,7 +23,18 @@ class ManagerShell extends StatefulWidget {
   State<ManagerShell> createState() => _ManagerShellState();
 }
 
-enum _Destination { dashboard, inventory, sales, customers, suppliers, profile }
+enum _Destination {
+  dashboard,
+  inventory,
+  sales,
+  customers,
+  suppliers,
+  quotations,
+  reports,
+  audit,
+  users,
+  profile,
+}
 
 class _ManagerShellState extends State<ManagerShell> {
   _Destination _destination = _Destination.dashboard;
@@ -34,12 +50,18 @@ class _ManagerShellState extends State<ManagerShell> {
     final sales = SalesAccess(user).enter;
     final customers = PartyAccess(user, PartyKind.customer).identity;
     final suppliers = PartyAccess(user, PartyKind.supplier).identity;
+    final features = FeatureAccess(user);
     final selected = switch (_destination) {
       _Destination.dashboard when dashboard => _Destination.dashboard,
       _Destination.inventory when inventory => _Destination.inventory,
       _Destination.sales when sales => _Destination.sales,
       _Destination.customers when customers => _Destination.customers,
       _Destination.suppliers when suppliers => _Destination.suppliers,
+      _Destination.quotations when features.quotations =>
+        _Destination.quotations,
+      _Destination.reports when features.reports => _Destination.reports,
+      _Destination.audit when features.audit => _Destination.audit,
+      _Destination.users when features.users => _Destination.users,
       _Destination.profile => _Destination.profile,
       _ =>
         dashboard
@@ -52,6 +74,14 @@ class _ManagerShellState extends State<ManagerShell> {
             ? _Destination.customers
             : suppliers
             ? _Destination.suppliers
+            : features.quotations
+            ? _Destination.quotations
+            : features.reports
+            ? _Destination.reports
+            : features.audit
+            ? _Destination.audit
+            : features.users
+            ? _Destination.users
             : _Destination.profile,
     };
     return Scaffold(
@@ -151,6 +181,42 @@ class _ManagerShellState extends State<ManagerShell> {
                       });
                     },
                   ),
+              for (final entry in <(_Destination, bool, String, IconData)>[
+                (
+                  _Destination.quotations,
+                  features.quotations,
+                  'عروض الأسعار',
+                  Icons.description_outlined,
+                ),
+                (
+                  _Destination.reports,
+                  features.reports,
+                  'التقارير',
+                  Icons.analytics_outlined,
+                ),
+                (
+                  _Destination.audit,
+                  features.audit,
+                  'سجل العمليات',
+                  Icons.history,
+                ),
+                (
+                  _Destination.users,
+                  features.users,
+                  'إدارة المستخدمين',
+                  Icons.manage_accounts_outlined,
+                ),
+              ])
+                if (entry.$2)
+                  ListTile(
+                    selected: selected == entry.$1,
+                    leading: Icon(entry.$4),
+                    title: Text(entry.$3),
+                    onTap: () {
+                      Navigator.pop(context);
+                      setState(() => _destination = entry.$1);
+                    },
+                  ),
               ListTile(
                 selected: selected == _Destination.profile,
                 leading: const Icon(Icons.person_outline),
@@ -176,6 +242,10 @@ class _ManagerShellState extends State<ManagerShell> {
             ),
           Expanded(
             child: switch (selected) {
+              _Destination.quotations => QuotationScreen(auth: auth),
+              _Destination.reports => ReportScreen(auth: auth),
+              _Destination.audit => AuditScreen(auth: auth),
+              _Destination.users => AdminScreen(auth: auth),
               _Destination.profile => ProfileScreen(auth: auth),
               _Destination.customers || _Destination.suppliers => PartyScreen(
                 key: ValueKey((selected, _partyOutstanding)),
