@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../parties/data/party_access.dart';
+
 import '../../../core/utils/money.dart';
 import '../../../shared/widgets/states.dart';
 import '../../auth/state/auth_controller.dart';
@@ -14,10 +16,12 @@ class DashboardScreen extends StatefulWidget {
     required this.auth,
     this.onInventory,
     this.onSales,
+    this.onParty,
   });
   final AuthController auth;
   final ValueChanged<bool>? onInventory;
   final ValueChanged<bool>? onSales;
+  final ValueChanged<PartyKind>? onParty;
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
@@ -150,6 +154,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       access: access,
                       onInventory: widget.onInventory,
                       onSales: widget.onSales,
+                      onParty: widget.onParty,
                     ),
                 ],
               ),
@@ -172,11 +177,13 @@ class _DashboardContent extends StatelessWidget {
     required this.access,
     this.onInventory,
     this.onSales,
+    this.onParty,
   });
   final DashboardData data;
   final DashboardAccess access;
   final ValueChanged<bool>? onInventory;
   final ValueChanged<bool>? onSales;
+  final ValueChanged<PartyKind>? onParty;
   @override
   Widget build(BuildContext context) {
     final metrics = data.overview.metrics;
@@ -272,6 +279,27 @@ class _DashboardContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (primary.isNotEmpty) _Figures(figures: primary),
+        if (onParty != null)
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            children: [
+              if (metric('RECEIVABLES') != null &&
+                  access.has('CUSTOMERS_VIEW') &&
+                  access.has('CUSTOMER_BALANCE_VIEW'))
+                TextButton(
+                  onPressed: () => onParty!(PartyKind.customer),
+                  child: const Text('عرض ديون العملاء'),
+                ),
+              if (metric('PAYABLES') != null &&
+                  access.has('SUPPLIERS_VIEW') &&
+                  access.has('SUPPLIER_BALANCE_VIEW'))
+                TextButton(
+                  onPressed: () => onParty!(PartyKind.supplier),
+                  child: const Text('عرض مستحقات الموردين'),
+                ),
+            ],
+          ),
         if (onSales != null && (access.sales || access.has('SALES_VIEW')))
           Wrap(
             spacing: 16,
