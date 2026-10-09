@@ -9,9 +9,15 @@ import '../data/dashboard_repository.dart';
 import '../state/dashboard_controller.dart';
 
 class DashboardScreen extends StatefulWidget {
-  const DashboardScreen({super.key, required this.auth, this.onInventory});
+  const DashboardScreen({
+    super.key,
+    required this.auth,
+    this.onInventory,
+    this.onSales,
+  });
   final AuthController auth;
   final ValueChanged<bool>? onInventory;
+  final ValueChanged<bool>? onSales;
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
 }
@@ -143,6 +149,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       data: data,
                       access: access,
                       onInventory: widget.onInventory,
+                      onSales: widget.onSales,
                     ),
                 ],
               ),
@@ -164,10 +171,12 @@ class _DashboardContent extends StatelessWidget {
     required this.data,
     required this.access,
     this.onInventory,
+    this.onSales,
   });
   final DashboardData data;
   final DashboardAccess access;
   final ValueChanged<bool>? onInventory;
+  final ValueChanged<bool>? onSales;
   @override
   Widget build(BuildContext context) {
     final metrics = data.overview.metrics;
@@ -263,6 +272,23 @@ class _DashboardContent extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (primary.isNotEmpty) _Figures(figures: primary),
+        if (onSales != null && (access.sales || access.has('SALES_VIEW')))
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            children: [
+              if (access.sales)
+                TextButton(
+                  onPressed: () => onSales!(false),
+                  child: const Text('عرض ملخص المبيعات'),
+                ),
+              if (access.has('SALES_VIEW'))
+                TextButton(
+                  onPressed: () => onSales!(true),
+                  child: const Text('عرض الفواتير'),
+                ),
+            ],
+          ),
         if (primary.isEmpty &&
             monthly.isEmpty &&
             operational.isEmpty &&
