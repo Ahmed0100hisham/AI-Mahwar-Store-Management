@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../../../core/errors/app_failure.dart';
@@ -5,6 +7,7 @@ import '../../../shared/widgets/states.dart';
 import '../../auth/data/auth_models.dart';
 import '../../auth/presentation/change_password_screen.dart';
 import '../../auth/state/auth_controller.dart';
+import '../../sales/presentation/sales_widgets.dart' show isolateDate;
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key, required this.auth});
@@ -17,33 +20,81 @@ class _ProfileScreenState extends State<ProfileScreen> {
   List<DeviceSession>? _sessions;
   AppFailure? _error;
   bool _loading = true, _acting = false;
+  Future<void>? _pending;
+  int _generation = 0;
+  late String _scope;
+  String get _authScope =>
+      '${widget.auth.status}:${widget.auth.sessionEpoch}:${widget.auth.user?.id}';
   @override
   void initState() {
     super.initState();
+    _scope = _authScope;
+    widget.auth.addListener(_authChanged);
     _load();
   }
 
-  Future<void> _load() async {
+  @override
+  void dispose() {
+    widget.auth.removeListener(_authChanged);
+    ++_generation;
+    super.dispose();
+  }
+
+  void _authChanged() {
+    if (_scope == _authScope) return;
+    _scope = _authScope;
+    ++_generation;
+    _pending = null;
+    setState(() {
+      _sessions = null;
+      _error = null;
+      _loading = true;
+    });
+    if (widget.auth.status == AuthStatus.authenticated) {
+      unawaited(_load());
+    }
+  }
+
+  Future<void> _load() {
+    if (_pending != null) return _pending!;
+    if (!mounted || widget.auth.status != AuthStatus.authenticated) {
+      return Future.value();
+    }
+    late final Future<void> pending;
+    pending = _fetch(++_generation, _scope).whenComplete(() {
+      if (identical(_pending, pending)) _pending = null;
+    });
+    return _pending = pending;
+  }
+
+  bool _current(int generation, String scope) =>
+      mounted && generation == _generation && scope == _authScope;
+
+  Future<void> _fetch(int generation, String scope) async {
     setState(() {
       _loading = true;
       _error = null;
     });
     try {
       await widget.auth.revalidate();
+      if (!_current(generation, scope)) return;
       final sessions = await widget.auth.repository.sessions();
-      if (mounted) {
+      if (_current(generation, scope)) {
         setState(() => _sessions = sessions);
       }
     } on AppFailure catch (error) {
-      if (mounted) {
-        setState(() => _error = error);
+      if (_current(generation, scope)) {
+        setState(() {
+          _error = error;
+          if (error.status == 401 || error.status == 403) _sessions = null;
+        });
       }
     } catch (_) {
-      if (mounted) {
+      if (_current(generation, scope)) {
         setState(() => _error = AppFailure.malformed);
       }
     } finally {
-      if (mounted) {
+      if (_current(generation, scope)) {
         setState(() => _loading = false);
       }
     }
@@ -201,13 +252,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),
                             ),
-                            if (session.current)
-                              const Chip(label: Text('هذا الجهاز')),
                           ],
                         ),
+                        if (session.current)
+                          const Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            child: Chip(label: Text('هذا الجهاز')),
+                          ),
                         const SizedBox(height: 12),
-                        Text('آخر نشاط: ${_date(session.lastActivityAt)}'),
-                        Text('بدء الجلسة: ${_date(session.createdAt)}'),
+                        Text(
+                          'آخر نشاط: ${isolateDate(_date(session.lastActivityAt))}',
+                        ),
+                        Text(
+                          'بدء الجلسة: ${isolateDate(_date(session.createdAt))}',
+                        ),
                         Text(
                           'الحالة: ${switch (session.status) {
                             'ACTIVE' => 'نشطة',

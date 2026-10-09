@@ -16,7 +16,8 @@ import '../../parties/presentation/party_screen.dart';
 import '../../parties/presentation/party_widgets.dart'
     show PartyMoney, PartyBlocked;
 import '../../sales/presentation/sales_screen.dart';
-import '../../sales/presentation/sales_widgets.dart' show SalesIdentifier;
+import '../../sales/presentation/sales_widgets.dart'
+    show SalesIdentifier, isolateDate;
 import '../data/report_repository.dart';
 
 class ReportScreen extends StatelessWidget {
@@ -170,7 +171,7 @@ class _ReportReadScreenState extends State<ReportReadScreen> {
   Widget _cash(CashSummary c) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Text('${c.range.from.iso} — ${c.range.to.iso}'),
+      Text('${isolateDate(c.range.from.iso)} — ${isolateDate(c.range.to.iso)}'),
       const Text('دفتر النقدية عبر جميع طرق الدفع؛ ليس النقد الورقي وحده.'),
       PartyMoney('الرصيد الافتتاحي', c.opening),
       PartyMoney('إجمالي الوارد', c.incoming),
@@ -196,7 +197,7 @@ class _ReportReadScreenState extends State<ReportReadScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text('تاريخ التقرير: ${d.date.iso}'),
+        Text('تاريخ التقرير: ${isolateDate(d.date.iso)}'),
         if (a.sales && d.sales != null) ...[
           PartyMoney('إجمالي المبيعات', d.sales!.grossSales),
           PartyMoney('قيمة المرتجعات بتاريخ الإرجاع', d.sales!.returns),
@@ -218,7 +219,7 @@ class _ReportReadScreenState extends State<ReportReadScreen> {
         if (a.cash && d.cash != null) _cash(d.cash!),
         if (a.inventory && d.inventory != null) ...[
           Text(
-            'لقطة المخزون الحالية بتاريخ ${d.inventoryDate!.iso}؛ ليست مخزوناً تاريخياً ليوم التقرير.',
+            'لقطة المخزون الحالية بتاريخ ${isolateDate(d.inventoryDate!.iso)}؛ ليست مخزوناً تاريخياً ليوم التقرير.',
           ),
           _inventory(d.inventory!),
         ],
@@ -287,7 +288,9 @@ class _ReportReadScreenState extends State<ReportReadScreen> {
         ExpenseReport r => Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('${r.summary.range.from.iso} — ${r.summary.range.to.iso}'),
+            Text(
+              '${isolateDate(r.summary.range.from.iso)} — ${isolateDate(r.summary.range.to.iso)}',
+            ),
             PartyMoney('إجمالي المصروفات', r.summary.total),
             Text('العمليات ${r.summary.entries}'),
             if (r.categories.isEmpty) const Text('لا توجد مصروفات في الفترة.'),
@@ -412,7 +415,7 @@ class _SlowReportScreenState extends State<SlowReportScreen> {
               Text(
                 p.lastSale == null
                     ? 'لا يوجد بيع سابق مسجّل'
-                    : 'آخر بيع ${p.lastSale!.iso} • ${p.daysSinceLastSale} يوماً',
+                    : 'آخر بيع ${isolateDate(p.lastSale!.iso)} • ${p.daysSinceLastSale} يوماً',
               ),
               if (FeatureAccess(widget.auth.user).has('PRODUCT_COST') &&
                   p.valueAtCost != null)

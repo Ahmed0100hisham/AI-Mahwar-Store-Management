@@ -24,6 +24,7 @@ Future<bool> confirmAdminAction(
             final valid =
                 auth.status == AuthStatus.authenticated && scope() == selected;
             return AlertDialog(
+              scrollable: true,
               title: Text(title),
               content: Text(
                 valid ? message : 'تغيرت الجلسة أو الصلاحيات. ألغِ التأكيد وأعد فتح المستخدم.',

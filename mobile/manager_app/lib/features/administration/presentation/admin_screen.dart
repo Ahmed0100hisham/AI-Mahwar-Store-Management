@@ -5,7 +5,8 @@ import '../../auth/state/auth_controller.dart';
 import '../../final_features/data/feature_access.dart';
 import '../../final_features/presentation/feature_widgets.dart';
 import '../../final_features/state/feature_state.dart';
-import '../../sales/presentation/sales_widgets.dart' show SalesIdentifier;
+import '../../sales/presentation/sales_widgets.dart'
+    show SalesIdentifier, isolateDate;
 import '../data/admin_models.dart';
 import '../data/admin_repository.dart';
 import '../state/admin_mutation.dart';
@@ -340,8 +341,9 @@ class _AdminDetailScreenState extends State<AdminDetailScreen> {
             ),
             if (u.phone != null) SalesIdentifier(u.phone!),
             if (u.email != null) SalesIdentifier(u.email!),
-            Text('الإنشاء ${u.createdAt}'),
-            if (u.lastLoginAt != null) Text('آخر دخول ${u.lastLoginAt}'),
+            Text('الإنشاء ${isolateDate(u.createdAt)}'),
+            if (u.lastLoginAt != null)
+              Text('آخر دخول ${isolateDate(u.lastLoginAt!)}'),
             Text(
               u.mustChange
                   ? 'يجب تغيير كلمة المرور عند الدخول.'

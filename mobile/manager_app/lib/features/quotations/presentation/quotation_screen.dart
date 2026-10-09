@@ -9,7 +9,8 @@ import '../../parties/presentation/party_widgets.dart' show PartyMoney;
 import '../../sales/data/sales_models.dart'
     show invoiceStateLabel, priceTypeLabel;
 import '../../sales/presentation/invoice_detail_screen.dart';
-import '../../sales/presentation/sales_widgets.dart' show SalesIdentifier;
+import '../../sales/presentation/sales_widgets.dart'
+    show SalesIdentifier, isolateDate;
 import '../../inventory/presentation/inventory_widgets.dart'
     show InventoryValue;
 import '../data/quotation_models.dart';
@@ -256,19 +257,21 @@ class _QuotationDetailScreenState extends State<QuotationDetailScreen> {
                 if (q.prospectName != null)
                   Text('الاسم الوارد بالعرض: ${q.prospectName}'),
                 if (q.prospectPhone != null) SalesIdentifier(q.prospectPhone!),
-                Text('تاريخ أعمال الخادم: ${q.businessDate.iso}'),
+                Text('تاريخ أعمال الخادم: ${isolateDate(q.businessDate.iso)}'),
                 Text(
                   q.validUntil == null
                       ? 'لا يوجد تاريخ انتهاء محدد'
-                      : 'صالح حتى: ${q.validUntil!.iso}',
+                      : 'صالح حتى: ${isolateDate(q.validUntil!.iso)}',
                 ),
                 Text(
                   q.pastValidity
                       ? 'تجاوز تاريخ الصلاحية؛ الحالة المسجّلة أعلاه مستقلة.'
                       : 'لم يتجاوز تاريخ الصلاحية.',
                 ),
-                if (q.sentAt != null) Text('الإرسال المسجّل: ${q.sentAt}'),
-                if (q.decidedAt != null) Text('القرار المسجّل: ${q.decidedAt}'),
+                if (q.sentAt != null)
+                  Text('الإرسال المسجّل: ${isolateDate(q.sentAt!)}'),
+                if (q.decidedAt != null)
+                  Text('القرار المسجّل: ${isolateDate(q.decidedAt!)}'),
                 PartyMoney('المجموع الفرعي', q.subtotal),
                 PartyMoney('الخصم', q.discount),
                 PartyMoney('الإجمالي', q.total),

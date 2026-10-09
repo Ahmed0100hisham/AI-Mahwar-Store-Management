@@ -27,7 +27,15 @@ class _ManagerAppState extends State<ManagerApp> with WidgetsBindingObserver {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     widget.auth.addListener(_guardRoutes);
-    if (widget.monitorSession) {
+    _startMonitor();
+  }
+
+  void _startMonitor() {
+    _timer?.cancel();
+    if (widget.monitorSession &&
+        (WidgetsBinding.instance.lifecycleState == null ||
+            WidgetsBinding.instance.lifecycleState ==
+                AppLifecycleState.resumed)) {
       _timer = Timer.periodic(
         const Duration(seconds: 60),
         (_) => widget.auth.checkSession(),
@@ -51,7 +59,11 @@ class _ManagerAppState extends State<ManagerApp> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
-      widget.auth.checkSession();
+      _startMonitor();
+      unawaited(widget.auth.checkSession());
+    } else {
+      _timer?.cancel();
+      _timer = null;
     }
   }
 

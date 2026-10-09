@@ -31,14 +31,26 @@ class ErrorNotice extends StatelessWidget {
         color: Theme.of(context).colorScheme.errorContainer,
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const Icon(Icons.error_outline),
-          const SizedBox(width: 10),
-          Expanded(child: Text(failure.message)),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.error_outline),
+              const SizedBox(width: 10),
+              Expanded(child: Text(failure.message)),
+            ],
+          ),
           if (onRetry != null)
-            TextButton(onPressed: onRetry, child: const Text('إعادة المحاولة')),
+            Align(
+              alignment: AlignmentDirectional.centerEnd,
+              child: TextButton(
+                onPressed: onRetry,
+                child: const Text('إعادة المحاولة'),
+              ),
+            ),
         ],
       ),
     ),
@@ -78,6 +90,7 @@ Future<bool> confirmAction(
     await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
+        scrollable: true,
         title: Text(title),
         content: Text(message),
         actions: [
